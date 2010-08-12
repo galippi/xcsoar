@@ -67,12 +67,12 @@ MapWaypointLabelListCompare(const void *elem1, const void *elem2)
     return (-1);
   */
 
-  if (((MapWaypointLabel_t *)elem1)->AltArivalAGL
-      > ((MapWaypointLabel_t *)elem2)->AltArivalAGL)
+  if (((const MapWaypointLabel_t *)elem1)->AltArivalAGL
+      > ((const MapWaypointLabel_t *)elem2)->AltArivalAGL)
     return -1;
 
-  if (((MapWaypointLabel_t *)elem1)->AltArivalAGL
-      < ((MapWaypointLabel_t *)elem2)->AltArivalAGL)
+  if (((const MapWaypointLabel_t *)elem1)->AltArivalAGL
+      < ((const MapWaypointLabel_t *)elem2)->AltArivalAGL)
     return 1;
 
   return 0;
