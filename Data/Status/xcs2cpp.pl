@@ -25,6 +25,7 @@ while (<>) {
 	chomp;
 	$line++;
 	next if (/^#/);
+	s/\r//;
 
 	if (/^\s*$/) {
 		if ($rec{key}) {
