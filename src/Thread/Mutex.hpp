@@ -64,6 +64,10 @@ Copyright_License {
 extern ThreadLocalInteger thread_locks_held;
 #endif
 
+#ifdef __CYGWIN__
+#define PTHREAD_MUTEX_RECURSIVE_NP PTHREAD_MUTEX_RECURSIVE
+#endif
+
 /**
  * This class wraps an OS specific mutex.  It is an object which one
  * thread can wait for, and another thread can wake it up.

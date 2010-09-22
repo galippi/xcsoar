@@ -293,7 +293,7 @@ ClipPolygon(Canvas &canvas, const POINT *m_ptin, unsigned int inLength,
   }
 
   POINT clip_ptin[inLength + 1];
-  memcpy((void*)clip_ptin, (void*)m_ptin, inLength * sizeof(POINT));
+  memcpy((void*)clip_ptin, (const void*)m_ptin, inLength * sizeof(POINT));
 
   // add extra point for final point if it doesn't equal the first
   // this is required to close some airspace areas that have missing

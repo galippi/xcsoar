@@ -64,7 +64,8 @@ endif
 ############# build and CPU info
 
 ifeq ($(CONFIG_PC),y)
-  TCPATH := i586-mingw32msvc-
+  #TCPATH := i586-mingw32msvc-
+  TCPATH := i686-pc-cygwin-
 
   ifeq ($(WINHOST),y)
     TCPATH :=
@@ -124,6 +125,13 @@ ifeq ($(TARGET),UNIX)
   HAVE_WIN32 := n
   HAVE_MSVCRT := n
   HAVE_VASPRINTF := y
+endif
+
+ifeq ($(TARGET),PC)
+  HAVE_POSIX := y
+  HAVE_WIN32 := y
+  HAVE_MSVCRT := n
+  HAVE_VASPRINTF := n
 endif
 
 ifeq ($(TARGET),ANDROID)
@@ -200,6 +208,9 @@ endif
 ifeq ($(HAVE_WIN32),y)
   TARGET_CPPFLAGS += -DWIN32_LEAN_AND_MEAN
   TARGET_CPPFLAGS += -DNOMINMAX
+  ifeq ($(CONFIG_PC),y)
+    TARGET_CPPFLAGS += -DWINDOWSPC=1
+  endif
 endif
 
 ifeq ($(TARGET),PPC2000)
@@ -223,6 +234,9 @@ ifeq ($(HAVE_POSIX),y)
   TARGET_CPPFLAGS += -DHAVE_POSIX
   TARGET_CPPFLAGS += -DHAVE_STDINT_H
   TARGET_CPPFLAGS += -DHAVE_UNISTD_H
+endif
+
+ifeq ($(HAVE_VASPRINTF),y)
   TARGET_CPPFLAGS += -DHAVE_VASPRINTF
 endif
 
@@ -267,7 +281,7 @@ TARGET_ARCH := $(MCPU)
 ifeq ($(HAVE_WIN32),y)
   TARGET_ARCH += -mwin32
 
-  WINDRESFLAGS := -I$(SRC) $(TARGET_CPPFLAGS)
+  WINDRESFLAGS := -I$(SRC) -I./Data $(TARGET_CPPFLAGS)
 endif # UNIX
 
 ifeq ($(TARGET),PC)
@@ -309,12 +323,15 @@ endif
 ifeq ($(HAVE_POSIX),y)
 ifneq ($(TARGET),ANDROID)
   TARGET_LDFLAGS += -lpthread
-  TARGET_LDFLAGS += -lrt # for clock_gettime()
+  ifneq ($(CONFIG_PC),y)
+    TARGET_LDFLAGS += -lrt # for clock_gettime()
+  endif
 endif
 endif
 
 ifeq ($(CONFIG_PC),y)
   TARGET_LDLIBS := -lcomctl32 -lkernel32 -luser32 -lgdi32 -ladvapi32 -lwinmm -lmsimg32 -lstdc++
+  TARGET_LDLIBS += -lintl -liconv
 endif
 
 ifeq ($(HAVE_CE),y)
