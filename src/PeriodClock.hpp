@@ -45,6 +45,10 @@ Copyright_License {
 #include <windows.h>
 #endif /* !HAVE_POSIX */
 
+#ifdef __CYGWIN__
+  #define CLOCK_MONOTONIC CLOCK_REALTIME
+#endif
+
 /**
  * This is a stopwatch which saves the timestamp of an even, and can
  * check whether a specified time span has passed since then.

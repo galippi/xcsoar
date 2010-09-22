@@ -48,7 +48,7 @@ Copyright_License {
 
 static const StatusMessageSTRUCT StatusMessageDefaults[] = {
 #include "Status_defaults.cpp"
-  { NULL }
+  { NULL, NULL, false, false, 0 }
 };
 
 StatusMessageList::StatusMessageList()
@@ -145,7 +145,7 @@ StatusMessageList::LoadFile(TLineReader &reader)
         // TODO code: this picks up memory lost from no entry, but not duplicates - fix.
         if (*location) {
           // JMW fix memory leak
-          free((void*)*location);
+          //free((void*)*location);
         }
         *location = StringMallocParse(value);
       }

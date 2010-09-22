@@ -1035,7 +1035,7 @@ void NMEAParser::TestRoutine(NMEA_INFO *GPS_INFO) {
   unsigned l;
   h1 = (angle.ifastsine()) / 7;
   n1 = (angle.ifastsine()) / 2 - 200;
-  e1 = (angle.ifastcosine()) / 1.5;
+  e1 = (int)((angle.ifastcosine()) / 1.5);
   t1 = -angle.as_bearing().value_degrees();
 
   l = (i % 30 > 13 ? 0 : (i % 30 > 5 ? 2 : 1));
@@ -1047,7 +1047,7 @@ void NMEAParser::TestRoutine(NMEA_INFO *GPS_INFO) {
   Angle hangle = dangle; hangle.flip(); hangle = hangle.as_bearing();
 
   h2 = (angle.ifastcosine()) / 10;
-  n2 = (dangle.ifastsine()) / 1.20 + 300;
+  n2 = (int)((dangle.ifastsine()) / 1.20) + 300;
   e2 = (dangle.ifastcosine()) + 500;
   t2 = hangle.value_degrees();
 

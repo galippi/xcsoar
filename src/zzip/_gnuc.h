@@ -197,7 +197,11 @@
 
 /* Define to `long int' if <sys/types.h> does not define. */
 #ifndef _zzip_off_t
+#ifdef __CYGWIN__
+#define _zzip_off_t  off_t
+#else
 #define _zzip_off_t  long
+#endif
 #endif
 
 /* Define to equivalent of C99 restrict keyword, or to nothing if this is not
