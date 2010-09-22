@@ -26,6 +26,7 @@ sub print_element($) {
 while (<>) {
     chomp;
     $line++;
+    s/\r//;
     next if (/^#/);
 
     if (/^\s*$/) {

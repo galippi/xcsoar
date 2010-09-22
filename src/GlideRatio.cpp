@@ -76,7 +76,7 @@ GlideRatioCalculator::init(const SETTINGS_COMPUTER &settings)
   assert(bsize < sizeof(records) / sizeof(records[0]));
 
   totaldistance = 0;
-  start = -1;
+  start = ~0;
   size = bsize;
   valid = false;
 }

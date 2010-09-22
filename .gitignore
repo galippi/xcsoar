@@ -2,6 +2,7 @@ results/res-*
 .stgit*
 .deps
 *.gcov
+*.bak
 *~
 *.IGC
 *.dbf
@@ -12,6 +13,7 @@ results/res-*
 *.rej
 *.log
 *.dmp
+*.stackdump
 *.so
 *.gcno
 *.gcno.info

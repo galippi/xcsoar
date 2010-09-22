@@ -47,6 +47,16 @@ Copyright_License {
 namespace Registry {
   bool Get(const TCHAR *szRegValue, DWORD &pPos);
 
+  static inline bool Get(const TCHAR *key, unsigned int &value)
+  {
+    DWORD temp;
+    if (!Get(key, temp))
+      return false;
+
+    value = temp;
+    return true;
+  }
+
   static inline bool Get(const TCHAR *key, int &value)
   {
     DWORD temp;
@@ -116,6 +126,11 @@ namespace Registry {
   static inline bool Set(const TCHAR *key, bool value)
   {
     return Set(key, value ? DWORD(1) : DWORD(0));
+  }
+
+  static inline bool Set(const TCHAR *key, unsigned int value)
+  {
+    return Set(key, DWORD(value));
   }
 
   static inline bool Set(const TCHAR *key, int value)
