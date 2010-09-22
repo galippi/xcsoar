@@ -565,7 +565,7 @@ FlarmTrafficWindow::PaintNorth(Canvas &canvas) const
 
   SIZE s = canvas.text_size(_T("N"));
   canvas.circle(radar_mid.x + iround(x * radius),
-                radar_mid.y + iround(y * radius), s.cy * 0.65);
+                radar_mid.y + iround(y * radius), (unsigned int)(s.cy * 0.65));
   canvas.text(radar_mid.x + iround(x * radius) - s.cx / 2,
               radar_mid.y + iround(y * radius) - s.cy / 2, _T("N"));
 }
@@ -599,13 +599,13 @@ FlarmTrafficWindow::PaintRadarBackground(Canvas &canvas) const
                             sizeof(distance_string) / sizeof(distance_string[0]));
   SIZE s = canvas.text_size(distance_string);
   canvas.text(radar_mid.x - s.cx / 2,
-              radar_mid.y + radius - s.cy * 0.75, distance_string);
+              radar_mid.y + radius - (int)(s.cy * 0.75), distance_string);
 
   Units::FormatUserDistance(distance / 2, distance_string,
                             sizeof(distance_string) / sizeof(distance_string[0]));
   s = canvas.text_size(distance_string);
   canvas.text(radar_mid.x - s.cx / 2,
-              radar_mid.y + radius / 2 - s.cy * 0.75, distance_string);
+              radar_mid.y + radius / 2 - (int)(s.cy * 0.75), distance_string);
 
   canvas.background_transparent();
 

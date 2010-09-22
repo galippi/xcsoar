@@ -96,7 +96,7 @@ typedef struct XMLResults
 /** Structure for XML clear (unformatted) node (usually comments) */
 typedef struct {
   LPCTSTR lpszOpenTag;
-  LPCTSTR lpszValue;
+  LPTSTR  lpszValue;
   LPCTSTR lpszCloseTag;
 } XMLClear;
 
@@ -104,7 +104,7 @@ typedef struct {
 typedef struct
 {
   LPCTSTR lpszName;
-  LPCTSTR lpszValue;
+  LPTSTR  lpszValue;
 } XMLAttribute;
 
 struct XMLNodeContents;
@@ -123,7 +123,7 @@ protected:
                     isDeclaration;   // Whether node is an XML declaration - '<?xml ?>'
       XMLNode       *pParent;        // Pointer to parent element (=NULL if root)
       XMLNode       *pChild;         // Array of child nodes
-      LPCTSTR       *pText;          // Array of text fields
+      LPTSTR        *pText;          // Array of text fields
       XMLClear      *pClear;         // Array of clear fields
       XMLAttribute  *pAttribute;     // Array of attributes
       int           *pOrder;         // order in which the child_nodes,text_fields,clear_fields and
@@ -155,7 +155,7 @@ public:
   // you can have a detailed explanation of the parsing error with this function:
 
   static bool GlobalError;
-  static LPCTSTR getError(XMLError error);
+  static const TCHAR *getError(XMLError error);
 
   LPCTSTR getName() const;                          // name of the node
   LPCTSTR getText(int i = 0) const;                 // return ith text field
@@ -197,9 +197,9 @@ public:
 
   // The strings given as parameters for these 4 methods will be free'd by the XMLNode class:
   XMLNode AddChild(LPCTSTR lpszName, int isDeclaration);
-  XMLAttribute *AddAttribute(LPCTSTR lpszName, LPCTSTR lpszValuev);
-  LPCTSTR AddText(LPCTSTR lpszValue);
-  XMLClear *AddClear(LPCTSTR lpszValue, LPCTSTR lpszOpen, LPCTSTR lpszClose);
+  XMLAttribute *AddAttribute(LPCTSTR lpszName, LPTSTR lpszValuev);
+  LPCTSTR AddText(LPTSTR lpszValue);
+  XMLClear *AddClear(LPTSTR lpszValue, LPCTSTR lpszOpen, LPCTSTR lpszClose);
 
 private:
   // these are functions used internally (don't bother about them):

@@ -566,7 +566,7 @@ InputEvents::showErrors()
 }
 #endif
 
-int
+unsigned
 InputEvents::findKey(const TCHAR *data)
 {
   if (_tcscmp(data, _T("APP1")) == 0)

@@ -8,7 +8,7 @@ BMP_ICONS_39 = $(PNG_ICONS_39:.png=.bmp)
 ifeq ($(WINHOST),y)
   IM_PREFIX := im-
 else
-  IM_PREFIX :=
+  IM_PREFIX := im-
 endif
 
 $(SVG_NOALIAS_ICONS): output/data/icons/%.svg: build/no_anti_aliasing.xsl Data/icons/%.svg | output/data/icons/dirstamp
@@ -22,13 +22,19 @@ $(PNG_ICONS_39): output/data/icons/%-39.png: output/data/icons/%.svg | output/da
 	@$(NQ)echo "  SVG     $@"
 	$(Q)rsvg-convert --width=39 $< -o $@
 
+#	$(Q)touch -c $@
+
 # extract alpha channel
 %-alpha.png: %.png
 	$(Q)$(IM_PREFIX)convert $< -alpha Extract +matte +dither -colors 8 $@
 
+#	$(Q)touch -c $@
+
 # extract RGB channels
 %-rgb.png: %.png
 	$(Q)$(IM_PREFIX)convert $< -background white -flatten +matte +dither -colors 64 $@
+
+#	$(Q)touch -c $@
 
 # tile both images
 %-tile.png: %-alpha.png %-rgb.png

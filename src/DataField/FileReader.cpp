@@ -536,8 +536,8 @@ static int _cdecl
 DataFieldFileReaderCompare(const void *elem1, const void *elem2)
 {
   // Compare by filename
-  return _tcscmp(((DataFieldFileReaderEntry*)elem1)->mTextFile,
-                 ((DataFieldFileReaderEntry*)elem2)->mTextFile);
+  return _tcscmp(((const DataFieldFileReaderEntry*)elem1)->mTextFile,
+                 ((const DataFieldFileReaderEntry*)elem2)->mTextFile);
 }
 
 void

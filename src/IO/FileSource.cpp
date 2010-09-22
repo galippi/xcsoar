@@ -134,7 +134,7 @@ WindowsFileSource::size() const
 
   return ::GetFileInformationByHandle(handle, &i.i)
     ? i.i.nFileSizeLow
-    : -1;
+    : ~0l;
 }
 
 unsigned
