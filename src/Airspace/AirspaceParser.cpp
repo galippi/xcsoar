@@ -578,15 +578,16 @@ ParseCoordsTNP(const TCHAR *Text, GEOPOINT &point)
 {
   // Format: N542500 E0105000
   bool negative = false;
-  double deg = 0, min = 0, sec = 0;
+  double sec;
+  int deg, min;
   TCHAR *ptr;
 
   if (Text[0] == _T('S') || Text[0] == _T('s'))
     negative = true;
 
   sec = (double)_tcstod(&Text[1], &ptr);
-  deg = abs(sec / 10000);
-  min = abs((sec - deg * 10000) / 100);
+  deg = abs((int)(sec / 10000));
+  min = abs((int)((sec - deg * 10000) / 100));
   sec = sec - min * 100 - deg * 10000;
 
   point.Latitude = Angle::dms(fixed(deg), fixed(min), fixed(sec));
@@ -602,8 +603,8 @@ ParseCoordsTNP(const TCHAR *Text, GEOPOINT &point)
     negative = true;
 
   sec = (double)_tcstod(&ptr[1], &ptr);
-  deg = abs(sec / 10000);
-  min = abs((sec - deg * 10000) / 100);
+  deg = abs((int)(sec / 10000));
+  min = abs((int)((sec - deg * 10000) / 100));
   sec = sec - min * 100 - deg * 10000;
 
   point.Longitude = Angle::dms(fixed(deg), fixed(min), fixed(sec));

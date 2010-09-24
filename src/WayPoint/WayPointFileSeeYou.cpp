@@ -205,7 +205,7 @@ WayPointFileSeeYou::parseAngle(const TCHAR* src, Angle& dest, const bool lat)
   // Calculate angle
   unsigned minfrac = iround((val - (int)val) * 1000);
   unsigned min = (int)val % 100;
-  unsigned deg = ((int)val - min) * 0.01;
+  unsigned deg = ((int)val - min) / 100;
   val = fixed(deg) + ((fixed)min + (fixed)minfrac / 1000) / 60;
 
   // Limit angle to +/- 90 degrees for Latitude or +/- 180 degrees for Longitude
