@@ -48,6 +48,7 @@ Copyright_License {
 #include "Airspace/AirspacePolygon.hpp"
 #include "Airspace/AirspaceCircle.hpp"
 #include "Compatibility/string.h"
+#include "LogFile.hpp"
 
 #include <math.h>
 #include <tchar.h>
@@ -770,11 +771,13 @@ ReadAirspace(Airspaces &airspace_database, TLineReader &reader)
 
   TCHAR *line;
   TCHAR *comment;
+  LogStartUp(_T("ReadAirspace()"));
   // Iterate through the lines
   while ((line = reader.read()) != NULL) {
     // Increase line counter
     LineCount++;
 
+    LogStartUp(_T("ReadAirspace() %d=%s*"), LineCount, line);
     // Strip comments
     comment = _tcschr(line, _T('*'));
     if (comment != NULL)

@@ -59,6 +59,7 @@ ReadAirspace(Airspaces &airspaces,
   // Read the airspace filenames from the registry
   TLineReader *reader =
     OpenConfiguredTextFile(szProfileAirspaceFile, _T("airspace.txt"));
+  LogStartUp(_T("ReadAirspace 1 %s*"), szProfileAirspaceFile);
   if (reader != NULL) {
     if (!ReadAirspace(airspaces, *reader))
       LogStartUp(_T("No airspace file 1"));
@@ -67,6 +68,8 @@ ReadAirspace(Airspaces &airspaces,
 
     delete reader;
   }
+
+  LogStartUp(_T("ReadAirspace 2"));
 
   reader = OpenConfiguredTextFile(szProfileAdditionalAirspaceFile);
   if (reader != NULL) {
@@ -78,6 +81,8 @@ ReadAirspace(Airspaces &airspaces,
     delete reader;
   }
 
+  LogStartUp(_T("ReadAirspace 3"));
+
   if (airspace_ok) {
     airspaces.optimise();
     airspaces.set_flight_levels(press);
@@ -87,4 +92,5 @@ ReadAirspace(Airspaces &airspaces,
   } else
     // there was a problem
     airspaces.clear();
+  LogStartUp(_T("ReadAirspace 4"));
 }
