@@ -308,7 +308,7 @@ SaveFormProperty(const WndForm &form, const TCHAR *control_name,
                  UnitGroup_t unit_group, double &value,
                  const TCHAR *registry_name)
 {
-  int value2 = value;
+  int value2 = (int)value;
   if (SaveFormProperty(form, control_name, unit_group, value2,
                        registry_name)) {
     value = value2;
