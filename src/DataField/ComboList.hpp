@@ -39,43 +39,66 @@ Copyright_License {
 #ifndef XCSOAR_DATA_FIELD_COMBO_LIST_HPP
 #define XCSOAR_DATA_FIELD_COMBO_LIST_HPP
 
+#include "Util/NonCopyable.hpp"
+#include "Util/StaticArray.hpp"
+
 #include <tchar.h>
 
-    typedef struct {
-      int ItemIndex;
-      int DataFieldIndex;
-      TCHAR *StringValue;
-      TCHAR *StringValueFormatted;
-    } ComboListEntry_t;
+class ComboList : private NonCopyable {
+public:
+  struct Item : private NonCopyable {
+    enum {
+      NEXT_PAGE = -800001,
+      PREVIOUS_PAGE = -800002,
+    };
 
-class ComboList{
+    int ItemIndex;
+    int DataFieldIndex;
+    TCHAR *StringValue;
+    TCHAR *StringValueFormatted;
+
+    Item(int _ItemIndex, int _DataFieldIndex,
+         const TCHAR *_StringValue, const TCHAR *_StringValueFormatted);
+    ~Item();
+  };
+
+  enum {
+    MAX_SIZE = 300,
+  };
+
+private:
+  StaticArray<Item*, MAX_SIZE> items;
 
   public:
 
   ComboList():ComboPopupItemSavedIndex(-1) {}
 
-#define ComboPopupLISTMAX 300
-#define ComboPopupITEMMAX 100
-#define ComboPopupReopenMOREDataIndex -800001
-#define ComboPopupReopenLESSDataIndex -800002
-#define ComboPopupNULL -800003
+  ~ComboList() {
+    Clear();
+  }
 
-    ComboListEntry_t *CreateItem(int ItemIndex, int DataFieldIndex,
-                                 const TCHAR *StringValue,
-                                 const TCHAR *StringValueFormatted);
-    void FreeComboPopupItemList(void);
+  unsigned size() const {
+    return items.size();
+  }
+
+  const Item &operator[](unsigned i) const {
+    return *items[i];
+  }
+
+  void Clear();
+
+  unsigned Append(Item *item);
+
+  unsigned Append(int ItemIndex, int DataFieldIndex,
+                  const TCHAR *StringValue,
+                  const TCHAR *StringValueFormatted) {
+    return Append(new Item(ItemIndex, DataFieldIndex,
+                           StringValue, StringValueFormatted));
+  }
 
     int ComboPopupItemSavedIndex;
-    unsigned ComboPopupItemCount;
-    ComboListEntry_t * ComboPopupItemList[ComboPopupLISTMAX]; // RLD make this dynamic later
 
     int PropertyDataFieldIndexSaved;
-    TCHAR PropertyValueSaved[ComboPopupITEMMAX];
-    TCHAR PropertyValueSavedFormatted[ComboPopupITEMMAX];
-
-
-  private:
-
 };
 
 #endif

@@ -1,15 +1,10 @@
-#include "test_debug.hpp"
 #include "Math/Earth.hpp"
+#include "TestUtil.hpp"
 
 #include <stdio.h>
 
 int main(int argc, char** argv) {
-
-  if (!parse_args(argc,argv)) {
-    return 0;
-  }
-
-  plan_tests(14);
+  plan_tests(19);
 
   /* check the division operator */
   ok((fixed_one / fixed_one) * fixed(1000) == fixed(1000), "1/1", 0);
@@ -23,7 +18,15 @@ int main(int argc, char** argv) {
   ok((fixed_minus_one / fixed_minus_one) * fixed(1000) == fixed(1000), "-1/-1", 0);
   ok((fixed(-1000000) / fixed(2)) * fixed(1000) == -fixed(500000000), "-1M/2", 0);
   ok((long)((fixed_one / (fixed_one / fixed(10))) * fixed(1000)) == (10000), "1/0.1", 0);
-  ok((long)((fixed_one / (fixed_one / fixed(-10))) * fixed(1000)) == -(10000), "1/-0.1", 0);
+  ok((long)((fixed_one / (fixed_one / fixed(-10))) * fixed(1000)) == -(10000) ||
+     (long)((fixed_one / (fixed_one / fixed(-10))) * fixed(1000)) == -(10001), "1/-0.1", 0);
+
+  ok(equals(fixed_one / fixed_half, 2), "1/0.5", 0);
+  ok(equals(fixed(1000) / fixed_half, 2000), "1/0.5", 0);
+  ok(equals(fixed(1000) / (fixed_one / 5), 5000), "1/0.5", 0);
+
+  ok(equals(fixed(1000000) / (fixed_one / 5), 5000000), "1/0.5", 0);
+  ok(equals(fixed(10000000) / (fixed_one / 5), 50000000), "1/0.5", 0);
 
   double da = 20.0;
   double dsina = sin(da);

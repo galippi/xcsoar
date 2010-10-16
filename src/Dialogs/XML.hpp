@@ -39,45 +39,39 @@ Copyright_License {
 #ifndef XCSOAR_DIALOGS_XML_HPP
 #define XCSOAR_DIALOGS_XML_HPP
 
-#include "Screen/Window.hpp"
-
 #include <tchar.h>
 
-class ContainerWindow;
 class WndForm;
 class SingleWindow;
 
 /**
  * Class to hold callback entries for dialogs
  */
-typedef struct{
+struct CallBackTableEntry
+{
   const TCHAR *Name;
   void *Ptr;
-} CallBackTableEntry_t;
+};
 
 /**
  * Dialog display styles
  */
-typedef enum {
+enum DialogStyle
+{
+  /** cover screen, stretch controls horizontally */
+  dsFullWidth = 0,
+  /** stretch only frame to maintain aspect ratio */
+  dsScaled,
+  /** like eDialogScaled but center dialog in screen */
+  dsScaledCentered,
+  /** don't adjust at all (same as !Layout::ScaleSupported()) */
+  dsFixed
+};
 
-  eDialogFullWidth = 0,         /**< cover screen, stretch controls horizontally */
-  eDialogScaled,                /**< stretch only frame to maintain aspect ratio */  
-  eDialogScaledCentered,        /**< like eDialogScaled but center dialog in screen */
-  eDialogFixed                  /**< don't adjust at all (same as !Layout::ScaleSupported()) */
-} DialogStyle_t;
-
-/**
- * Callback type for the "Custom" element, attribute "OnCreate".
- */
-typedef Window *(*CreateWindowCallback_t)(ContainerWindow &parent,
-                                          int left, int top,
-                                          unsigned width, unsigned height,
-                                          const WindowStyle style);
-
-extern DialogStyle_t g_eDialogStyle;
+extern DialogStyle DialogStyleSetting;
 
 WndForm *
-LoadDialog(CallBackTableEntry_t *LookUpTable, SingleWindow &Parent,
+LoadDialog(CallBackTableEntry *LookUpTable, SingleWindow &Parent,
                const TCHAR *resource);
 
 #endif

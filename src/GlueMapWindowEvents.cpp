@@ -81,40 +81,26 @@ GlueMapWindow::on_mouse_double(int x, int y)
 bool
 GlueMapWindow::on_mouse_move(int x, int y, unsigned keys)
 {
-#ifdef OLD_TASK // target control
-  if (task != NULL &&
-      task->getSettings().AATEnabled &&
-      SettingsMap().TargetPan &&
-      (TargetDrag_State > 0)) {
-    // target follows "finger" so easier to drop near edge of
-    // sector
-    if (TargetDrag_State == 1) {
-      GeoPoint mouseMove = Screen2LonLat(x, y);
-      unsigned index = SettingsMap().TargetPanIndex;
-      if (task->InAATTurnSector(mouseMove, index)) {
-        // update waypoints so if we drag out of the cylinder, it
-        // will remain adjacent to the edge
-
-        TASK_POINT tp = task->getTaskPoint(index);
-        tp.AATTargetLocation = mouseMove;
-        task->setTaskPoint(index, tp);
-        TargetDrag_Location = mouseMove;
-
-        MapGfx.hBmpTarget.draw(get_canvas(), get_bitmap_canvas(), x, y);
-        return true;
-      }
-    }
-  }
-#endif
 
   switch (drag_mode) {
   case DRAG_NONE:
     break;
 
+  case DRAG_TARGET:
+    if (isInSector(x, y)) {
+      drag_last.x = drag_last_valid_target.x = x;
+      drag_last.y = drag_last_valid_target.y = y;
+      invalidate();
+    }
+    return true;
+
   case DRAG_PAN:
-    drag_last.x = x;
-    drag_last.y = y;
-    invalidate();
+    XCSoarInterface::SetSettingsMap().PanLocation =
+      drag_projection.GetPanLocation() + drag_start_geopoint
+      - drag_projection.Screen2LonLat(x, y);
+
+    QuickRedraw(XCSoarInterface::SettingsMap());
+    ActionInterface::SendSettingsMap(true);
     return true;
 
   case DRAG_GESTURE:
@@ -141,38 +127,30 @@ GlueMapWindow::on_mouse_down(int x, int y)
 
   drag_start.x = x;
   drag_start.y = y;
-  drag_start_geopoint = projection.Screen2LonLat(x, y);
+  drag_start_geopoint = visible_projection.Screen2LonLat(x, y);
   drag_last = drag_start;
 
-  if (SettingsMap().EnablePan)
+  if (SettingsMap().TargetPan) {
+    drag_mode = isClickOnTarget(drag_start) ? DRAG_TARGET : DRAG_NONE;
+  } else if (SettingsMap().EnablePan) {
     drag_mode = DRAG_PAN;
-  else if (is_simulator() && !Basic().gps.Replay)
-    drag_mode = DRAG_SIMULATOR;
-  else if (XCSoarInterface::SettingsComputer().EnableGestures) {
+    drag_projection = visible_projection;
+  }
+
+  if (is_simulator() && !Basic().gps.Replay && drag_mode == DRAG_NONE)
+    if (!XCSoarInterface::SettingsComputer().EnableGestures ||
+        compare_squared(visible_projection.GetOrigAircraft().x - x,
+                        visible_projection.GetOrigAircraft().y - y,
+                        Layout::Scale(30)) != 1)
+        drag_mode = DRAG_SIMULATOR;
+  if (XCSoarInterface::SettingsComputer().EnableGestures &&
+      drag_mode == DRAG_NONE ) {
     gestures.Start(x, y, Layout::Scale(20));
     drag_mode = DRAG_GESTURE;
   }
 
   if (drag_mode != DRAG_NONE)
     set_capture();
-
-#ifdef OLD_TASK // target control
-  if (task != NULL &&
-      task->getSettings().AATEnabled &&
-      SettingsMap().TargetPan) {
-    if (task->ValidTaskPoint(SettingsMap().TargetPanIndex)) {
-      POINT tscreen;
-      LonLat2Screen(task->getTargetLocation(SettingsMap().TargetPanIndex),
-                    tscreen);
-      double distance = hypot(drag_start.x - tscreen.x,
-                              drag_start.y - tscreen.y);
-      distance /= Layout::scale;
-
-      if (distance < 10)
-        TargetDrag_State = 1;
-    }
-  }
-#endif
 
   return true;
 }
@@ -192,23 +170,6 @@ GlueMapWindow::on_mouse_up(int x, int y)
   int click_time = mouse_down_clock.elapsed();
   mouse_down_clock.reset();
 
-  if (SettingsMap().TargetPan) {
-#ifdef OLD_TASK // target control
-    if (task != NULL &&
-        task->getSettings().AATEnabled &&
-        TargetDrag_State > 0) {
-      TargetDrag_State = 2;
-      if (task->InAATTurnSector(G, SettingsMap().TargetPanIndex))
-        // if release mouse out of sector, don't update w/ bad coords
-        TargetDrag_Location = G;
-
-      return true;
-    }
-
-    return false;
-#endif
-  }
-
   enum drag_mode old_drag_mode = drag_mode;
   drag_mode = DRAG_NONE;
 
@@ -216,30 +177,21 @@ GlueMapWindow::on_mouse_up(int x, int y)
   case DRAG_NONE:
     break;
 
-  case DRAG_PAN:
-    if (compare_squared(drag_start.x - x, drag_start.y - y,
-                        Layout::Scale(10)) == 1) {
-      const GeoPoint start = projection.Screen2LonLat(drag_start.x,
-                                                      drag_start.y);
-      const GeoPoint end = projection.Screen2LonLat(x, y);
-
-      XCSoarInterface::SetSettingsMap().PanLocation.Longitude +=
-        start.Longitude - end.Longitude;
-      XCSoarInterface::SetSettingsMap().PanLocation.Latitude +=
-        start.Latitude - end.Latitude;
-      ++ui_generation;
-
-      ActionInterface::SendSettingsMap(true);
-      return true;
-    }
-
+  case DRAG_TARGET:
+    TargetDragged(drag_last_valid_target.x, drag_last_valid_target.y);
     break;
+
+  case DRAG_PAN:
+    /* allow the use of the stretched last buffer for the next two
+       redraws */
+    scale_buffer = 2;
+    return true;
 
   case DRAG_SIMULATOR:
     if (click_time > 50 &&
         compare_squared(drag_start.x - x, drag_start.y - y,
                         Layout::Scale(36)) == 1) {
-      GeoPoint G = projection.Screen2LonLat(x, y);
+      GeoPoint G = visible_projection.Screen2LonLat(x, y);
 
       double distance = hypot(drag_start.x - x, drag_start.y - y);
 
@@ -253,7 +205,7 @@ GlueMapWindow::on_mouse_up(int x, int y)
           (Basic().GroundSpeed < minspeed))
         device_blackboard.SetSpeed(min(fixed(100.0),
                                        max(minspeed,
-                                           fixed(distance / (3 * Layout::scale)))));
+                                           fixed(distance / (Layout::FastScale(3))))));
 
       device_blackboard.SetTrackBearing(newbearing);
       // change bearing without changing speed if direction change > 30
@@ -274,18 +226,21 @@ GlueMapWindow::on_mouse_up(int x, int y)
     break;
   }
 
-  if(click_time < 1000) {
-    // click less then one second -> open nearest waypoint details
-    if (way_points != NULL &&
-        PopupNearestWaypointDetails(*way_points, drag_start_geopoint,
-                                    projection.DistancePixelsToMeters(Layout::Scale(10)),
-                                    true))
-      return true;
-  } else {
-    // click more then one second -> open nearest airspace details
-    if (airspace_database != NULL &&
-        AirspaceDetailsAtPoint(drag_start_geopoint))
-      return true;
+  if (!SettingsMap().TargetPan) {
+    if(click_time < 1000) {
+      // click less then one second -> open nearest waypoint details
+      if (way_points != NULL &&
+          PopupNearestWaypointDetails(*way_points, drag_start_geopoint,
+                                      visible_projection.DistancePixelsToMeters(Layout::Scale(10)),
+                                      true))
+        return true;
+    }
+    else {
+      // click more then one second -> open nearest airspace details
+      if (airspace_database != NULL &&
+          AirspaceDetailsAtPoint(drag_start_geopoint))
+        return true;
+    }
   }
 
   return false;
@@ -394,32 +349,12 @@ GlueMapWindow::on_cancel_mode()
 void
 GlueMapWindow::on_paint(Canvas &canvas)
 {
-  if (drag_mode == DRAG_PAN) {
-    /* quick redraw while scrolling the map with the mouse */
+  MapWindow::on_paint(canvas);
 
-    canvas.null_pen();
-    canvas.white_brush();
+  // Draw center screen cross hair in pan mode
+  if (SettingsMap().EnablePan && !SettingsMap().TargetPan)
+    DrawCrossHairs(canvas);
 
-    /* clear the areas around the buffer */
-
-    if (drag_last.x > drag_start.x)
-      canvas.rectangle(0, 0, drag_last.x - drag_start.x, canvas.get_height());
-    else if (drag_last.x < drag_start.x)
-      canvas.rectangle(canvas.get_width() + drag_last.x - drag_start.x, 0,
-                       canvas.get_width(), canvas.get_height());
-
-    if (drag_last.y > drag_start.y)
-      canvas.rectangle(0, 0, canvas.get_width(), drag_last.y - drag_start.y);
-    else if (drag_last.y < drag_start.y)
-      canvas.rectangle(0, canvas.get_height() + drag_last.y - drag_start.y,
-                       canvas.get_width(), canvas.get_height());
-
-    /* now copy the buffer */
-
-    ScopeLock protect(DoubleBufferWindow::mutex);
-    canvas.copy(drag_last.x - drag_start.x, drag_last.y - drag_start.y,
-                canvas.get_width(), canvas.get_height(),
-                get_visible_canvas(), 0, 0);
-  } else
-    return MapWindow::on_paint(canvas);
+  if (drag_mode == DRAG_TARGET)
+    TargetPaintDrag(canvas, drag_last);
 }

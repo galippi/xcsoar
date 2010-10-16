@@ -41,7 +41,7 @@ Copyright_License {
 #ifdef HAVE_BLANK
 
 #include "Interface.hpp"
-#include "Hardware/Battery.h"
+#include "Hardware/Battery.hpp"
 #include "Hardware/Display.hpp"
 #include "Dialogs.h"
 #include "LogFile.hpp"
@@ -81,13 +81,15 @@ BlankDisplay(bool doblank)
     // JMW, maybe this should be active always...
     // we don't want the PDA to be completely depleted.
 
-    if (!PDABatteryAC) {
-      if (is_simulator() && (PDABatteryPercent < BATTERY_EXIT)) {
+    if (Power::External::Status == Power::External::OFF) {
+      if (is_simulator() && Power::Battery::RemainingPercentValid &&
+          Power::Battery::RemainingPercent < BATTERY_EXIT) {
         LogStartUp(TEXT("Battery low exit..."));
         // TODO feature: Warning message on battery shutdown
         XCSoarInterface::SignalShutdown(true);
       } else {
-        if (PDABatteryPercent < BATTERY_WARNING) {
+        if (Power::Battery::RemainingPercentValid &&
+            Power::Battery::RemainingPercent < BATTERY_WARNING) {
           DWORD LocalWarningTime = ::GetTickCount();
           if ((LocalWarningTime - BatteryWarningTime) > BATTERY_REMINDER) {
             BatteryWarningTime = LocalWarningTime;
@@ -100,7 +102,7 @@ BlankDisplay(bool doblank)
       }
     }
 
-    if (!PDABatteryAC) {
+    if (Power::External::Status == Power::External::OFF) {
       // Power off the display
       Display::Blank(true);
       oldblank = true;

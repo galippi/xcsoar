@@ -166,10 +166,23 @@ InfoBoxWindow::SetComment(const TCHAR *Value)
 void
 InfoBoxWindow::SetInvalid()
 {
+  SetValueInvalid();
+  SetCommentInvalid();
+}
+
+void
+InfoBoxWindow::SetValueInvalid()
+{
   SetValue(_T("---"));
-  SetComment(_T(""));
   SetValueUnit(unUndef);
 }
+
+void
+InfoBoxWindow::SetCommentInvalid()
+{
+  SetComment(_T(""));
+}
+
 
 void
 InfoBoxWindow::PaintTitle(Canvas &canvas)
@@ -458,6 +471,16 @@ InfoBoxWindow::on_mouse_down(int x, int y)
   // if single clicked -> focus the InfoBoxWindow
   set_focus();
   return true;
+}
+
+bool
+InfoBoxWindow::on_mouse_up(int x, int y)
+{
+  if (click_clock.check(2000)) {
+    InputEvents::eventDoInfoKey(_T("setup"));
+    return true;
+  } else
+    return PaintWindow::on_mouse_up(x, y);
 }
 
 bool

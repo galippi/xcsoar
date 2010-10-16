@@ -49,10 +49,10 @@ Copyright_License {
 
 class LeonardoDevice : public AbstractDevice {
 private:
-  ComPort *port;
+  Port *port;
 
 public:
-  LeonardoDevice(ComPort *_port):port(_port) {}
+  LeonardoDevice(Port *_port):port(_port) {}
 
 public:
   virtual bool ParseNMEA(const char *line, struct NMEA_INFO *info,
@@ -101,7 +101,9 @@ LeonardoParseC(NMEAInputLine &line, NMEA_INFO &info, bool enable_baro)
   info.AirspeedAvailable = line.read_checked(value);
   if (info.AirspeedAvailable) {
     info.TrueAirspeed = Units::ToSysUnit(value, unKiloMeterPerHour);
-    info.IndicatedAirspeed = info.TrueAirspeed; // XXX convert properly
+    info.IndicatedAirspeed = info.TrueAirspeed *
+        AtmosphericPressure::AirDensityRatio(info.BaroAltitudeAvailable ?
+            info.BaroAltitude : info.GPSAltitude);
   }
 
   // 3 = netto vario [dm/s]
@@ -113,7 +115,10 @@ LeonardoParseC(NMEAInputLine &line, NMEA_INFO &info, bool enable_baro)
     return true;
 
   // 4 = temperature [deg C]
-  info.TemperatureAvailable = line.read_checked(info.OutsideAirTemperature);
+  fixed oat;
+  info.TemperatureAvailable = line.read_checked(oat);
+  if (info.TemperatureAvailable)
+    info.OutsideAirTemperature = Units::ToSysUnit(oat, unGradCelcius);
 
   // 10 = wind speed [km/h]
   // 11 = wind direction [degrees]
@@ -159,7 +164,10 @@ LeonardoParseD(NMEAInputLine &line, NMEA_INFO &info)
   }
 
   // 4 = temperature [deg C]
-  info.TemperatureAvailable = line.read_checked(info.OutsideAirTemperature);
+  fixed oat;
+  info.TemperatureAvailable = line.read_checked(oat);
+  if (info.TemperatureAvailable)
+    info.OutsideAirTemperature = Units::ToSysUnit(oat, unGradCelcius);
 
   // 5 = compass [degrees]
   /* XXX unsupported by XCSoar */
@@ -195,7 +203,7 @@ LeonardoDevice::ParseNMEA(const char *_line, NMEA_INFO *info, bool enable_baro)
 }
 
 static Device *
-LeonardoCreateOnComPort(ComPort *com_port)
+LeonardoCreateOnPort(Port *com_port)
 {
   return new LeonardoDevice(com_port);
 }
@@ -203,5 +211,5 @@ LeonardoCreateOnComPort(ComPort *com_port)
 const struct DeviceRegister leonardo_device_driver = {
   _T("Leonardo"),
   drfGPS | drfBaroAlt | drfSpeed | drfVario,
-  LeonardoCreateOnComPort,
+  LeonardoCreateOnPort,
 };

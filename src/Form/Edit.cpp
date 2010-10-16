@@ -222,14 +222,11 @@ WndProperty::SetText(const TCHAR *Value)
   edit.set_text(Value);
 }
 
-const Font *
+void
 WndProperty::SetFont(const Font &Value)
 {
-  const Font *res = GetFont();
   WindowControl::SetFont(Value);
-
   edit.set_font(Value);
-  return res;
 }
 
 void
@@ -272,7 +269,6 @@ void
 WndProperty::on_editor_setfocus()
 {
   if (mDataField != NULL) {
-    mDataField->GetData();
     edit.set_text(mDataField->GetAsString());
   }
 
@@ -286,7 +282,6 @@ WndProperty::on_editor_killfocus()
     TCHAR sTmp[128];
     edit.get_text(sTmp, (sizeof(sTmp) / sizeof(TCHAR)) - 1);
     mDataField->SetAsString(sTmp);
-    mDataField->SetData();
     edit.set_text(mDataField->GetAsDisplayString());
   }
 
@@ -402,11 +397,10 @@ WndProperty::on_paint(Canvas &canvas)
 {
   /* background and selector */
   if (edit.has_focus()) {
-    const Brush brush(GetBackColor().highlight());
-    canvas.clear(brush);
+    canvas.clear(GetBackColor().highlight());
     PaintSelector(canvas, get_client_rect());
   } else
-    canvas.clear(GetBackBrush());
+    canvas.clear(GetBackColor());
 
   SIZE tsize;
   POINT org;
@@ -481,7 +475,6 @@ WndProperty::SetDataField(DataField *Value)
     Value->Use();
 
     mDataField = Value;
-    mDataField->GetData();
 
     mDialogStyle = has_pointer() && mDataField->SupportCombo;
 

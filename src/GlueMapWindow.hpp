@@ -51,6 +51,8 @@ class GlueMapWindow : public MapWindow {
 public:
   GlueMapWindow();
 
+  void QuickRedraw(const SETTINGS_MAP &_settings_map);
+
   bool Idle();
 
 private:
@@ -59,15 +61,18 @@ private:
     DRAG_PAN,
     DRAG_GESTURE,
     DRAG_SIMULATOR,
+    DRAG_TARGET,
   } drag_mode;
 
   GeoPoint drag_start_geopoint;
-  POINT drag_start, drag_last;
+  POINT drag_start, drag_last, drag_last_valid_target;
   GestureManager gestures;
   bool ignore_single_click;
 
-  // display management
-  void RefreshMap();
+  /**
+   * The projection which was active when dragging started.
+   */
+  Projection drag_projection;
 
   bool AirspaceDetailsAtPoint(const GeoPoint &location) const;
 

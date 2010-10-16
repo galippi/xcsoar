@@ -97,6 +97,8 @@ Canvas::segment(int x, int y, unsigned radius,
 void
 Canvas::draw_button(RECT rc, bool down)
 {
+  const Pen old_pen = pen;
+
   Brush gray(Color(192, 192, 192));
   fill_rectangle(rc, gray);
 
@@ -115,7 +117,7 @@ Canvas::draw_button(RECT rc, bool down)
   two_lines(rc.left + 2, rc.bottom - 2, rc.right - 2, rc.bottom - 2,
             rc.right - 2, rc.top + 2);
 
-  white_pen();
+  pen = old_pen;
 }
 
 const SIZE
@@ -175,9 +177,9 @@ Canvas::text(int x, int y, const TCHAR *text)
 }
 
 void
-Canvas::text_opaque(int x, int y, const RECT* lprc, const TCHAR *_text)
+Canvas::text_opaque(int x, int y, const RECT &rc, const TCHAR *_text)
 {
-  // XXX
+  fill_rectangle(rc, background_color);
   text(x, y, _text);
 }
 
@@ -636,9 +638,9 @@ Canvas::text(int x, int y, const TCHAR *text, size_t length)
 }
 
 void
-Canvas::text_opaque(int x, int y, const RECT* lprc, const TCHAR *text)
+Canvas::text_opaque(int x, int y, const RECT &rc, const TCHAR *text)
 {
-  ::ExtTextOut(dc, x, y, ETO_OPAQUE, lprc, text, _tcslen(text), NULL);
+  ::ExtTextOut(dc, x, y, ETO_OPAQUE, &rc, text, _tcslen(text), NULL);
 }
 
 void

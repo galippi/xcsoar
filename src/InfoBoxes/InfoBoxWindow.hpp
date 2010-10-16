@@ -196,10 +196,17 @@ public:
   void SetColorTop(int Value);
 
   /**
-   * This function will reset the value to ---, clear the comment
-   * line and remove the unit
+   * Calls SetValueInvalid() then SetCommentInvalid()
    */
   void SetInvalid();
+  /**
+   * Resets value to --- and unassigns the unit
+   */
+  void SetValueInvalid();
+  /**
+   * Clears comment
+   */
+  void SetCommentInvalid();
 
   /**
    * Constructor of the InfoBoxWindow class
@@ -235,6 +242,9 @@ protected:
    * @return True if the event has been handled, False otherwise
    */
   virtual bool on_mouse_down(int x, int y);
+
+  virtual bool on_mouse_up(int x, int y);
+
   /**
    * This event handler is called when a mouse button is double clicked over
    * the InfoBox

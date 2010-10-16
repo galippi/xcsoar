@@ -41,7 +41,7 @@ Copyright_License {
 #include "UtilsFont.hpp"
 #include "InfoBoxes/InfoBoxLayout.hpp"
 #include "ButtonLabel.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "Screen/Layout.hpp"
 #include "Screen/VirtualCanvas.hpp"
 #include "Appearance.hpp"
@@ -72,26 +72,11 @@ LOGFONT LogMapBold;
 LOGFONT LogCDI;
 LOGFONT LogMapLabel;
 
-#ifndef ENABLE_SDL
-
-static bool
-IsNullLogFont(LOGFONT logfont)
-{
-  LOGFONT LogFontBlank;
-  memset((char *)&LogFontBlank, 0, sizeof(LOGFONT));
-  return (memcmp(&logfont, &LogFontBlank, sizeof(LOGFONT)) == 0);
-}
-
-#endif /* !ENABLE_SDL */
-
 static void
 InitialiseLogfont(LOGFONT* font, const TCHAR* facename, int height,
                   bool bold = false, bool italic = false,
                   bool variable_pitch = true)
 {
-#ifdef ENABLE_SDL
-  font->lfHeight = (long)height;
-#else
   memset((char *)font, 0, sizeof(LOGFONT));
 
   _tcscpy(font->lfFaceName, facename);
@@ -101,58 +86,20 @@ InitialiseLogfont(LOGFONT* font, const TCHAR* facename, int height,
   font->lfWeight = (long)(bold ? FW_BOLD : FW_MEDIUM);
   font->lfItalic = italic;
   font->lfQuality = ANTIALIASED_QUALITY;
-#endif /* !ENABLE_SDL */
 }
 
 void
-Fonts::SetFont(Font *theFont, LOGFONT autoLogFont,
-                  LOGFONT * LogFontUsed)
+Fonts::LoadCustomFont(Font *theFont, const TCHAR FontRegKey[])
 {
-#ifdef ENABLE_SDL
-  if (theFont->defined())
-    return;
-
-  // XXX hard coded path
-  const char *dejavu_ttf =
-    "/usr/share/fonts/truetype/ttf-dejavu/DejaVuSansCondensed.ttf";
-
-  if (theFont->set(dejavu_ttf,
-                   autoLogFont.lfHeight > 0 ? autoLogFont.lfHeight : 10,
-                   autoLogFont.lfWeight >= 700,
-                   autoLogFont.lfItalic) &&
-      LogFontUsed != NULL)
-    *LogFontUsed = autoLogFont;
-#else /* !ENABLE_SDL */
-  if (theFont->defined() || IsNullLogFont(autoLogFont))
-    return;
-
-  if (theFont->set(&autoLogFont) && LogFontUsed != NULL)
-    *LogFontUsed = autoLogFont; // RLD save for custom font GUI
-#endif /* !ENABLE_SDL */
-}
-
-void
-Fonts::LoadCustomFont(Font *theFont, const TCHAR FontRegKey[], LOGFONT * LogFontUsed)
-{
-#ifdef ENABLE_SDL
-  // XXX
-#else /* !ENABLE_SDL */
   LOGFONT logfont;
   memset((char *)&logfont, 0, sizeof(LOGFONT));
-  if (!Profile::GetFont(FontRegKey, &logfont))
-    return;
-
-  if (theFont->set(&logfont) && LogFontUsed != NULL)
-    *LogFontUsed = logfont; // RLD save for custom font GUI
-#endif /* !ENABLE_SDL */
+  if (Profile::GetFont(FontRegKey, &logfont))
+    theFont->set(logfont);
 }
 
 static void
-InitialiseFontsAltair()
+LoadAltairLogFonts()
 {
-  if (!is_altair())
-    return;
-
   InitialiseLogfont(&LogInfoBox, _T("RasterGothicTwentyFourCond"), 24, true);
   InitialiseLogfont(&LogTitle, _T("RasterGothicNineCond"), 10);
   InitialiseLogfont(&LogCDI, _T("RasterGothicEighteenCond"), 19, true);
@@ -163,8 +110,34 @@ InitialiseFontsAltair()
 }
 
 static void
+SizeLogFont(LOGFONT &logfont, unsigned width, const TCHAR* str)
+{
+  // JMW algorithm to auto-size info window font.
+  // this is still required in case title font property doesn't exist.
+  VirtualCanvas canvas(1, 1);
+  SIZE tsize;
+  do {
+    --logfont.lfHeight;
+
+    Font font;
+    if (!font.set(logfont))
+      break;
+
+    canvas.select(font);
+    tsize = canvas.text_size(str);
+  } while ((unsigned)tsize.cx > width);
+
+  ++logfont.lfHeight;
+}
+
+static void
 InitialiseLogFonts()
 {
+  if (is_altair()) {
+    LoadAltairLogFonts();
+    return;
+  }
+
 #ifdef ENABLE_SDL
   int FontHeight = Layout::SmallScale(20);
 #else
@@ -175,27 +148,7 @@ InitialiseLogFonts()
   InitialiseLogfont(&LogInfoBox, Fonts::GetStandardFontFace(),
                     (int)(FontHeight * 1.4), true, false, true);
 
-#ifndef ENABLE_SDL
   LogInfoBox.lfCharSet = ANSI_CHARSET;
-#endif /* !ENABLE_SDL */
-
-  // JMW algorithm to auto-size info window font.
-  // this is still required in case title font property doesn't exist.
-  VirtualCanvas canvas(1, 1);
-  SIZE tsize;
-  do {
-    --LogInfoBox.lfHeight;
-
-    Font font;
-    Fonts::SetFont(&font, LogInfoBox, NULL);
-    if (!font.defined())
-      break;
-
-    canvas.select(font);
-    tsize = canvas.text_size(_T("1234m"));
-  } while ((unsigned)tsize.cx > InfoBoxLayout::ControlWidth);
-
-  ++LogInfoBox.lfHeight;
 
   InitialiseLogfont(&LogTitle, Fonts::GetStandardFontFace(),
                     FontHeight / 3, true);
@@ -221,29 +174,35 @@ InitialiseLogFonts()
 }
 
 void
-Fonts::Initialize(bool use_custom)
+Fonts::Initialize()
 {
   InitialiseLogFonts();
 
-  InitialiseFontsAltair();
+  InfoBoxSmall.set(LogInfoBoxSmall);
+  Title.set(LogTitle);
+  CDI.set(LogCDI);
+  MapLabel.set(LogMapLabel);
+  Map.set(LogMap);
+  MapBold.set(LogMapBold);
+}
 
-  SetFont(&InfoBox, LogInfoBox);
-  SetFont(&InfoBoxSmall, LogInfoBoxSmall);
-  SetFont(&Title, LogTitle);
-  SetFont(&CDI, LogCDI);
-  SetFont(&MapLabel, LogMapLabel);
-  SetFont(&Map, LogMap);
-  SetFont(&MapBold, LogMapBold);
+void
+Fonts::SizeInfoboxFont()
+{
+  SizeLogFont(LogInfoBox, InfoBoxLayout::ControlWidth, _T("1234m"));
+  InfoBox.set(LogInfoBox);
+}
 
-  if (use_custom) {
-    LoadCustomFont(&InfoBox, szProfileFontInfoWindowFont);
-    LoadCustomFont(&InfoBoxSmall, szProfileFontTitleSmallWindowFont);
-    LoadCustomFont(&Title, szProfileFontTitleWindowFont);
-    LoadCustomFont(&CDI, szProfileFontCDIWindowFont);
-    LoadCustomFont(&MapLabel, szProfileFontMapLabelFont);
-    LoadCustomFont(&Map, szProfileFontMapWindowFont);
-    LoadCustomFont(&MapBold, szProfileFontMapWindowBoldFont);
-  }
+void
+Fonts::LoadCustom()
+{
+  LoadCustomFont(&InfoBox, szProfileFontInfoWindowFont);
+  LoadCustomFont(&InfoBoxSmall, szProfileFontTitleSmallWindowFont);
+  LoadCustomFont(&Title, szProfileFontTitleWindowFont);
+  LoadCustomFont(&CDI, szProfileFontCDIWindowFont);
+  LoadCustomFont(&MapLabel, szProfileFontMapLabelFont);
+  LoadCustomFont(&Map, szProfileFontMapWindowFont);
+  LoadCustomFont(&MapBold, szProfileFontMapWindowBoldFont);
 }
 
 const TCHAR*

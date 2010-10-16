@@ -38,20 +38,9 @@ Copyright_License {
 
 #include "Topology/TopologyStore.hpp"
 #include "Topology/TopologyFile.hpp"
-#include "Dialogs.h"
-#include "Language.hpp"
-#include "Compatibility/string.h"
-#include "Profile.hpp"
-#include "LocalPath.hpp"
-#include "UtilsText.hpp"
 #include "StringUtil.hpp"
-#include "LogFile.hpp"
-#include "SettingsMap.hpp" // for EnableTopology
-#include "IO/ZipLineReader.hpp"
-#include "ProgressGlue.hpp"
-#include "OS/FileUtil.hpp"
-
-#include <assert.h>
+#include "IO/LineReader.hpp"
+#include "Compatibility/path.h"
 
 void
 TopologyStore::ScanVisibility(const Projection &m_projection)
@@ -70,14 +59,6 @@ TopologyStore::ScanVisibility(const Projection &m_projection)
 
 TopologyStore::~TopologyStore()
 {
-  Close();
-}
-
-void
-TopologyStore::Close()
-{
-  LogStartUp(_T("CloseTopology"));
-
   Reset();
 }
 
@@ -112,52 +93,6 @@ TopologyStore::TopologyStore()
   for (int z = 0; z < MAXTOPOLOGY; z++) {
     topology_store[z] = NULL;
   }
-
-  Open();
-}
-
-void
-TopologyStore::Reload()
-{
-  Close();
-  Open();
-}
-
-void
-TopologyStore::Open()
-{
-  LogStartUp(_T("OpenTopology"));
-
-  ProgressGlue::Create(_("Loading Topology File..."));
-
-  // Start off by getting the names and paths
-  TCHAR szFile[MAX_PATH];
-
-  if (!Profile::GetPath(szProfileTopologyFile, szFile) ||
-      !File::Exists(szFile)) {
-    // file is blank, so look for it in a map file
-    if (!Profile::GetPath(szProfileMapFile, szFile) ||
-        !File::Exists(szFile))
-      return;
-
-    // Look for the file within the map zip file...
-    _tcscat(szFile, _T("/"));
-    _tcscat(szFile, _T("topology.tpl"));
-  }
-
-  // Ready to open the file now..
-  ZipSource reader(szFile);
-  if (reader.error()) {
-    LogStartUp(_T("No topology file: %s"), szFile);
-    return;
-  }
-
-  LineSplitter splitter(reader);
-
-  TCHAR Directory[MAX_PATH];
-  ExtractDirectory(Directory, szFile);
-
-  Load(splitter, Directory);
 }
 
 void
@@ -178,6 +113,7 @@ TopologyStore::Load(NLineReader &reader, const TCHAR* Directory)
 #else
   strcpy(ShapeFilename, Directory);
 #endif
+  strcat(ShapeFilename, DIR_SEPARATOR_S);
 
   char *ShapeFilenameEnd = ShapeFilename + strlen(ShapeFilename);
 

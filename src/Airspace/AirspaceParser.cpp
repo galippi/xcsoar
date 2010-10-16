@@ -616,8 +616,8 @@ ParseCoordsTNP(const TCHAR *Text, GeoPoint &point)
     negative = true;
 
   sec = _tcstol(&Text[1], &ptr, 10);
-  deg = abs(sec / 10000);
-  min = abs((sec - deg * 10000) / 100);
+  deg = labs(sec / 10000);
+  min = labs((sec - deg * 10000) / 100);
   sec = sec - min * 100 - deg * 10000;
 
   point.Latitude = Angle::dms(fixed(deg), fixed(min), fixed(sec));
@@ -633,8 +633,8 @@ ParseCoordsTNP(const TCHAR *Text, GeoPoint &point)
     negative = true;
 
   sec = _tcstol(&ptr[1], &ptr, 10);
-  deg = abs(sec / 10000);
-  min = abs((sec - deg * 10000) / 100);
+  deg = labs(sec / 10000);
+  min = labs((sec - deg * 10000) / 100);
   sec = sec - min * 100 - deg * 10000;
 
   point.Longitude = Angle::dms(fixed(deg), fixed(min), fixed(sec));
@@ -817,8 +817,7 @@ ReadAirspace(Airspaces &airspace_database, TLineReader &reader)
       *comment = _T('\0');
 
     // Skip empty line
-    unsigned linelength = _tcslen(line);
-    if (linelength < 1)
+    if (string_is_empty(line))
       continue;
 
     if (filetype == ftUnknown) {
@@ -843,7 +842,7 @@ ReadAirspace(Airspaces &airspace_database, TLineReader &reader)
   }
 
   if (filetype == ftUnknown) {
-    MessageBoxX(_T("Unknown Filetype."), _("Airspace"), MB_OK);
+    MessageBoxX(_("Unknown Filetype."), _("Airspace"), MB_OK);
     return false;
   }
 

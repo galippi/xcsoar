@@ -126,7 +126,6 @@ private:
   static void eventClearAirspaceWarnings(const TCHAR *misc);
   static void eventClearStatusMessages(const TCHAR *misc);
   static void eventClearWarningsOrTerrainTopology(const TCHAR *misc);
-  static void eventDLLExecute(const TCHAR *misc);
   static void eventDoInfoKey(const TCHAR *misc);
   static void eventLogger(const TCHAR *misc);
   static void eventMacCready(const TCHAR *misc);
@@ -149,7 +148,6 @@ private:
   static void eventSendNMEAPort2(const TCHAR *misc);
   static void eventSetup(const TCHAR *misc);
   static void eventSnailTrail(const TCHAR *misc);
-  static void eventVisualGlide(const TCHAR *misc); // VENTA3
   static void eventAirSpace(const TCHAR *misc); // VENTA3
   static void eventSounds(const TCHAR *misc);
   static void eventStatus(const TCHAR *misc);

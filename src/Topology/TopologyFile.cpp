@@ -47,10 +47,18 @@ Copyright_License {
 #include "SettingsMap.hpp"
 #include "Navigation/GeoPoint.hpp"
 #include "resource.h"
+#include "shapelib/map.h"
 
 #include <stdlib.h>
 #include <tchar.h>
 #include <ctype.h> // needed for Wine
+
+gcc_pure
+static GeoPoint
+point2GeoPoint(const pointObj& p)
+{
+  return GeoPoint(Angle::native(fixed(p.x)), Angle::native(fixed(p.y)));
+}
 
 void
 TopologyFile::loadIcon(const int res_id)
@@ -78,8 +86,8 @@ TopologyFile::TopologyFile(const char *filename, const Color thecolor,
 
   shapefileopen = true;
 
-  cache_bounds.minx = cache_bounds.miny =
-    cache_bounds.maxx = cache_bounds.maxy = 0;
+  cache_bounds.west = cache_bounds.east =
+    cache_bounds.south = cache_bounds.north = Angle::native(fixed_zero);
 
   for (int i = 0; i < shpfile.numshapes; i++)
     shpCache[i] = NULL;
@@ -109,17 +117,13 @@ TopologyFile::ClearCache()
 }
 
 rectObj
-TopologyFile::ConvertRect(const rectObj &src)
+TopologyFile::ConvertRect(const BoundsRectangle &br)
 {
-  rectObj dest = src;
-
-#ifdef RADIANS
-  dest.minx *= RAD_TO_DEG;
-  dest.miny *= RAD_TO_DEG;
-  dest.maxx *= RAD_TO_DEG;
-  dest.maxy *= RAD_TO_DEG;
-#endif
-
+  rectObj dest;
+  dest.minx = br.west.value_degrees();
+  dest.maxx = br.east.value_degrees();
+  dest.miny = br.south.value_degrees();
+  dest.maxy = br.north.value_degrees();
   return dest;
 }
 
@@ -133,8 +137,9 @@ TopologyFile::updateCache(const Projection &map_projection)
     /* not visible, don't update cache now */
     return;
 
-  rectObj screenRect = map_projection.CalculateScreenBounds(fixed_zero);
-  if (msRectContained(&screenRect, &cache_bounds))
+  const BoundsRectangle screenRect =
+    map_projection.CalculateScreenBounds(fixed_zero);
+  if (cache_bounds.inside(screenRect))
     /* the cache is still fresh */
     return;
 
@@ -204,14 +209,8 @@ TopologyFile::Paint(Canvas &canvas, BitmapCanvas &bitmap_canvas,
 
   int iskip = GetSkipSteps(map_scale);
 
-  rectObj screenRect = projection.CalculateScreenBounds(fixed_zero);
-
-#ifdef RADIANS
-  screenRect.minx *= RAD_TO_DEG;
-  screenRect.miny *= RAD_TO_DEG;
-  screenRect.maxx *= RAD_TO_DEG;
-  screenRect.maxy *= RAD_TO_DEG;
-#endif
+  const rectObj screenRect =
+    ConvertRect(projection.CalculateScreenBounds(fixed_zero));
 
   for (int ixshp = 0; ixshp < shpfile.numshapes; ixshp++) {
     const XShape *cshape = shpCache[ixshp];
@@ -230,7 +229,7 @@ TopologyFile::Paint(Canvas &canvas, BitmapCanvas &bitmap_canvas,
 
         for (int jj = 0; jj < line.numpoints; ++jj) {
           POINT sc;
-          const GeoPoint l = projection.point2GeoPoint(line.point[jj]);
+          const GeoPoint l = point2GeoPoint(line.point[jj]);
 
           if (projection.LonLat2ScreenIfVisible(l, &sc))
             icon.draw(canvas, bitmap_canvas, sc.x, sc.y);
@@ -244,7 +243,10 @@ TopologyFile::Paint(Canvas &canvas, BitmapCanvas &bitmap_canvas,
         unsigned msize = line.numpoints;
         POINT pt[msize];
 
-        projection.LonLat2Screen(line.point, pt, msize, 1);
+        for (unsigned i = 0; i < msize; ++i) {
+          GeoPoint g = point2GeoPoint(line.point[i]);
+          pt[i] = projection.LonLat2Screen(g);
+        }
 
         canvas.polyline(pt, msize);
       }
@@ -256,7 +258,12 @@ TopologyFile::Paint(Canvas &canvas, BitmapCanvas &bitmap_canvas,
         unsigned msize = line.numpoints / iskip;
         POINT pt[msize];
 
-        projection.LonLat2Screen(line.point, pt, msize * iskip, iskip);
+        const pointObj *in = line.point;
+        for (unsigned i = 0; i < msize; ++i) {
+          GeoPoint g = point2GeoPoint(*in);
+          in += iskip;
+          pt[i] = projection.LonLat2Screen(g);
+        }
 
         canvas.polygon(pt, msize);
       }
@@ -288,14 +295,8 @@ TopologyFile::PaintLabels(Canvas &canvas,
 
   int iskip = GetSkipSteps(map_scale);
 
-  rectObj screenRect = projection.CalculateScreenBounds(fixed_zero);
-
-#ifdef RADIANS
-  screenRect.minx *= RAD_TO_DEG;
-  screenRect.miny *= RAD_TO_DEG;
-  screenRect.maxx *= RAD_TO_DEG;
-  screenRect.maxy *= RAD_TO_DEG;
-#endif
+  rectObj screenRect =
+    ConvertRect(projection.CalculateScreenBounds(fixed_zero));
 
   for (int ixshp = 0; ixshp < shpfile.numshapes; ixshp++) {
     const XShape *cshape = shpCache[ixshp];
@@ -309,17 +310,18 @@ TopologyFile::PaintLabels(Canvas &canvas,
 
     for (int tt = 0; tt < shape.numlines; ++tt) {
       const lineObj &line = shape.line[tt];
-      unsigned msize = line.numpoints / iskip;
-      POINT pt[msize];
-
-      projection.LonLat2Screen(line.point, pt, msize * iskip, iskip);
 
       int minx = canvas.get_width();
       int miny = canvas.get_height();
-      for (unsigned jj = 0; jj < msize; ++jj) {
-        if (pt[jj].x <= minx) {
-          minx = pt[jj].x;
-          miny = pt[jj].y;
+      const pointObj *in = line.point;
+      for (unsigned i = 0; i < (unsigned)line.numpoints; i += iskip) {
+        GeoPoint g = point2GeoPoint(line.point[i]);
+        in += iskip;
+        POINT pt = projection.LonLat2Screen(g);
+
+        if (pt.x <= minx) {
+          minx = pt.x;
+          miny = pt.y;
         }
       }
 

@@ -55,7 +55,12 @@ ElementStat::set_times(const fixed ts,
                        const AIRCRAFT_STATE& state)
 {
   TimeStarted = ts;
-  TimeElapsed = max(state.Time - fixed(ts), fixed_zero);
+  if (negative(TimeStarted))
+    /* not yet started */
+    TimeElapsed = fixed_zero;
+  else
+    TimeElapsed = max(state.Time - fixed(ts), fixed_zero);
+
   TimeRemaining = solution_remaining.TimeElapsed;
   TimePlanned = TimeElapsed+TimeRemaining;
 }

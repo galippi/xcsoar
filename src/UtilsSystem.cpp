@@ -42,6 +42,7 @@ Copyright_License {
 #include "LocalPath.hpp"
 #include "LogFile.hpp"
 #include "Asset.hpp"
+#include "OS/FileUtil.hpp"
 
 #include <tchar.h>
 
@@ -135,18 +136,13 @@ void CreateDirectoryIfAbsent(const TCHAR *filename) {
   TCHAR fullname[MAX_PATH];
 
   LocalPath(fullname, filename);
+  if (Directory::Exists(fullname))
+    return;
 
 #ifdef HAVE_POSIX
   mkdir(filename, 0777);
 #else /* !HAVE_POSIX */
-  DWORD fattr = GetFileAttributes(fullname);
-
-  if ((fattr != 0xFFFFFFFF) &&
-      (fattr & FILE_ATTRIBUTE_DIRECTORY)) {
-    // directory exists
-  } else
-    CreateDirectory(fullname, NULL);
-
+  CreateDirectory(fullname, NULL);
 #endif /* !HAVE_POSIX */
 }
 
@@ -164,24 +160,8 @@ TranscodeKey(unsigned wParam)
   // VENTA-ADDON HARDWARE KEYS TRANSCODING
 
   if (GlobalModelType == MODELTYPE_PNA_HP31X) {
-      /*
-      if (wParam == 0x7b)
-        // VK_APP1
-        wParam = 0xc1;
-      */
-
-      if (wParam == 0x7b)
-        // VK_ESCAPE
-        wParam = 0x1b;
-
-      /*
-      if (wParam == 0x7b)
-        // VK_RIGHT
-        wParam = 0x27;
-      if (wParam == 0x7b)
-        // VK_LEFT
-        wParam=0x25;
-      */
+    if (wParam == 0x7b)
+      wParam = 0x1b;
   } else if (GlobalModelType == MODELTYPE_PNA_PN6000) {
     switch(wParam) {
     case 0x79:					// Upper Silver key short press

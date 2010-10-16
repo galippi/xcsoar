@@ -75,16 +75,28 @@ PBB50(NMEAInputLine &line, NMEA_INFO *GPS_INFO)
   // $PBB50,0,.0,.0,0,0,1.07,0,-228*58
   // $PBB50,14,-.2,.0,196,0,.92,0,-228*71
 
-  fixed vtas, vias, wnet;
+  fixed vtas, value;
 
-  vtas = Units::ToSysUnit(line.read(fixed_zero), unKnots);
-  wnet = Units::ToSysUnit(line.read(fixed_zero), unKnots);
-  GPS_INFO->MacCready = Units::ToSysUnit(line.read(fixed_zero), unKnots);
+  bool vtas_av = line.read_checked(vtas);
+
+  GPS_INFO->TotalEnergyVarioAvailable = line.read_checked(value);
+  if (GPS_INFO->TotalEnergyVarioAvailable) {
+    GPS_INFO->TotalEnergyVario = Units::ToSysUnit(value, unKnots);
+
+    TriggerVarioUpdate();
+  }
+
+  if (line.read_checked(value))
+    GPS_INFO->MacCready = Units::ToSysUnit(value, unKnots);
 
   /// @todo: OLD_TASK device MC/bugs/ballast is currently not implemented, have to push MC to master
   ///  oldGlidePolar::SetMacCready(GPS_INFO->MacCready);
 
-  vias = Units::ToSysUnit(line.read(fixed_zero), unKnots);
+  GPS_INFO->AirspeedAvailable = line.read_checked(value) && vtas_av;
+  if (GPS_INFO->AirspeedAvailable) {
+    GPS_INFO->IndicatedAirspeed = Units::ToSysUnit(sqrt(value), unKnots);
+    GPS_INFO->TrueAirspeed = Units::ToSysUnit(vtas, unKnots);
+  }
 
   // RMN: Changed bugs-calculation, swapped ballast and bugs to suit
   // the B50-string for Borgelt, it's % degradation, for us, it is %
@@ -121,13 +133,9 @@ PBB50(NMEAInputLine &line, NMEA_INFO *GPS_INFO)
     triggerClimbEvent.reset();
   }
 
-  GPS_INFO->AirspeedAvailable = true;
-  GPS_INFO->IndicatedAirspeed = vias;
-  GPS_INFO->TrueAirspeed = vtas;
-  GPS_INFO->TotalEnergyVarioAvailable = true;
-  GPS_INFO->TotalEnergyVario = wnet;
-
-  TriggerVarioUpdate();
+  GPS_INFO->TemperatureAvailable = line.read_checked(value);
+  if (GPS_INFO->TemperatureAvailable)
+    GPS_INFO->OutsideAirTemperature = Units::ToSysUnit(value, unGradCelcius);
 
   return false;
 }
@@ -147,7 +155,7 @@ B50Device::ParseNMEA(const char *String, NMEA_INFO *GPS_INFO,
 }
 
 static Device *
-B50CreateOnComPort(ComPort *com_port)
+B50CreateOnPort(Port *com_port)
 {
   return new B50Device();
 }
@@ -155,5 +163,5 @@ B50CreateOnComPort(ComPort *com_port)
 const struct DeviceRegister b50Device = {
   _T("Borgelt B50"),
   drfGPS,
-  B50CreateOnComPort,
+  B50CreateOnPort,
 };

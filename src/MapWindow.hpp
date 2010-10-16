@@ -49,6 +49,7 @@ Copyright_License {
 #include "MapWindowBlackboard.hpp"
 #include "NMEA/Derived.hpp"
 #include "BackgroundDrawHelper.hpp"
+#include "WayPoint/WayPointRenderer.hpp"
 #include "Compiler.h"
 
 struct THERMAL_SOURCE_VIEW
@@ -84,7 +85,25 @@ class MapWindow : public DoubleBufferWindow,
   public MapWindowTimer
 {
 protected:
-  MapWindowProjection projection;
+  /**
+   * The projection as currently visible on the screen.  This object
+   * is being edited by the user.
+   */
+  MapWindowProjection visible_projection;
+
+  /**
+   * The projection of the buffer.  This differs from
+   * visible_projection only after the projection was modified, until
+   * the DrawThread has finished drawing the new projection.
+   */
+  MapWindowProjection buffer_projection;
+
+  /**
+   * The projection of the DrawThread.  This is used to render the new
+   * map.  After rendering has completed, this object is copied over
+   * #buffer_projection.
+   */
+  MapWindowProjection render_projection;
 
   const Waypoints *way_points;
   TopologyStore *topology;
@@ -95,6 +114,8 @@ protected:
   RasterWeather *weather;
 
   BackgroundDrawHelper m_background;
+  WayPointRenderer way_point_renderer;
+
   Airspaces *airspace_database;
   ProtectedAirspaceWarningManager *airspace_warnings;
   ProtectedTaskManager *task;
@@ -107,11 +128,15 @@ protected:
    * Tracks whether the buffer canvas contains valid data.  We use
    * those attributes to prevent showing invalid data on the map, when
    * the user switches quickly to or from full-screen mode.
-   *
-   * thread_generation is used by Render() to cancel the current
-   * iteration when ui_generation changes.
    */
-  unsigned ui_generation, thread_generation, buffer_generation;
+  unsigned ui_generation, buffer_generation;
+
+  /**
+   * If non-zero, then the buffer will be scaled to the new
+   * projection, and this variable is decremented.  This is used while
+   * zooming and panning, to give instant visual feedback.
+   */
+  unsigned scale_buffer;
 
 public:
   MapWindow();
@@ -131,6 +156,7 @@ public:
 
   void set_way_points(const Waypoints *_way_points) {
     way_points = _way_points;
+    way_point_renderer.set_way_points(way_points);
   }
 
   void set_task(ProtectedTaskManager *_task) {
@@ -151,8 +177,48 @@ public:
     marks = _marks;
   }
 
-  // used by dlgTarget
-  bool TargetDragged(double *longitude, double *latitude);
+
+  /**
+   * If PanTarget, tests if target is clicked
+   * Used by dlgTarget
+   *
+   * @param drag_last location of click
+   *
+   * @return true if click is near target
+   */
+  bool isClickOnTarget(const POINT drag_last);
+
+  /**
+   * If PanTarget, tests if drag destination
+   * is in OZ of target being edited
+   * Used by dlgTarget
+   *
+   * @param x mouse_up location
+   * @param y mouse_up location
+   *
+   * @return true if location is in OZ
+   */
+  bool isInSector(const int x, const int y);
+
+  /**
+   * If PanTarget, paints target during drag
+   * Used by dlgTarget
+   *
+   * @param drag_last location of target
+   * @param canvas
+   */
+  void TargetPaintDrag(Canvas &canvas, const POINT last_drag);
+
+  /**
+   * If PanTarget, updates task with new target
+   * Used by dlgTarget
+   *
+   * @param x mouse_up location
+   * @param y mouse_up location
+   *
+   * @return true if successful
+   */
+  bool TargetDragged(const int x, const int y);
 
   void ReadBlackboard(const NMEA_INFO &nmea_info,
                       const DERIVED_INFO &derived_info,
@@ -161,8 +227,8 @@ public:
 
   void UpdateProjection();
 
-  const MapWindowProjection &MapProjection() const {
-    return projection;
+  const MapWindowProjection &VisibleProjection() const {
+    return visible_projection;
   }
 
 private:
@@ -197,7 +263,11 @@ private:
 
   // display renderers
   void DrawAircraft(Canvas &canvas) const;
+
+protected:
   void DrawCrossHairs(Canvas &canvas) const;
+
+public:
   void DrawBestCruiseTrack(Canvas &canvas) const;
   void DrawCompass(Canvas &canvas, const RECT &rc) const;
   void DrawHorizon(Canvas &canvas, const RECT &rc) const;
@@ -216,8 +286,10 @@ private:
   void DrawTask(Canvas &canvas, const RECT &rc, Canvas &buffer);
   void DrawThermalEstimate(Canvas &canvas) const;
 
-  void DrawMapScale(Canvas &canvas, const RECT &rc) const;
-  void DrawMapScale2(Canvas &canvas, const RECT &rc) const;
+  void DrawMapScale(Canvas &canvas, const RECT &rc,
+                    const MapWindowProjection &projection) const;
+  void DrawMapScale2(Canvas &canvas, const RECT &rc,
+                     const MapWindowProjection &projection) const;
   void DrawFinalGlide(Canvas &canvas, const RECT &rc) const;
   void DrawThermalBand(Canvas &canvas, const RECT &rc) const;
   void DrawGlideThroughTerrain(Canvas &canvas) const;
@@ -228,7 +300,7 @@ private:
   void DrawFLARMTraffic(Canvas &canvas) const;
 
   gcc_pure
-  fixed findMapScaleBarSize(const RECT &rc) const;
+  fixed findMapScaleBarSize(const RECT &rc, const MapWindowProjection &projection) const;
 
   // thread, main functions
   void Render(Canvas &canvas, const RECT &rc);

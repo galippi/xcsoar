@@ -39,7 +39,6 @@ Copyright_License {
 #ifndef XCSOAR_MO_FILE_HPP
 #define XCSOAR_MO_FILE_HPP
 
-#include "OS/FileMapping.hpp"
 #include "Util/AllocatedArray.hpp"
 
 #include <stdint.h>
@@ -65,7 +64,8 @@ class MOFile {
     const char *original, *translation;
   };
 
-  FileMapping mapping;
+  const uint8_t *data;
+  size_t size;
 
   bool native_byte_order;
 
@@ -73,7 +73,7 @@ class MOFile {
   AllocatedArray<string_pair> strings;
 
 public:
-  MOFile(const TCHAR *path);
+  MOFile(const void *data, size_t size);
 
   bool error() const {
     return count == 0;

@@ -36,15 +36,29 @@ Copyright_License {
 }
 */
 
+#include "Screen/Bitmap.hpp"
 #include "Dialogs/Internal.hpp"
 #include "resource.h"
 #include "Screen/Layout.hpp"
 #include "MainWindow.hpp"
 #include "Simulator.hpp"
+#include "Version.hpp"
+
+#include <stdio.h>
 
 #ifdef SIMULATOR_AVAILABLE
 
-static WndForm *wf=NULL;
+static WndForm *wf = NULL;
+
+static void
+OnSplashPaint(WindowControl *Sender, Canvas &canvas)
+{
+  Bitmap splash_bitmap;
+  splash_bitmap.load((Layout::scale_1024 > 1024 * 3 / 2) ?
+                     IDB_SWIFT : IDB_SWIFT2);
+  BitmapCanvas bitmap_canvas(canvas, splash_bitmap);
+  canvas.stretch(bitmap_canvas);
+}
 
 static void
 OnSimulatorClicked(gcc_unused WndButton &button)
@@ -58,8 +72,9 @@ OnFlyClicked(gcc_unused WndButton &button)
   wf->SetModalResult(mrCancel);
 }
 
-static CallBackTableEntry_t CallBackTable[]={
-    DeclareCallBackEntry(NULL)
+static CallBackTableEntry CallBackTable[] = {
+  DeclareCallBackEntry(OnSplashPaint),
+  DeclareCallBackEntry(NULL)
 };
 
 #endif
@@ -69,19 +84,26 @@ dlgSimulatorPromptShowModal()
 {
 #ifdef SIMULATOR_AVAILABLE
   wf = LoadDialog(CallBackTable, XCSoarInterface::main_window,
-                      Layout::landscape ? _T("IDR_XML_SIMULATORPROMPT_L") :
-                      _T("IDR_XML_SIMULATORPROMPT"));
-  if (!wf)
-    return false;
+                  Layout::landscape ? _T("IDR_XML_SIMULATORPROMPT_L") :
+                                      _T("IDR_XML_SIMULATORPROMPT"));
+  assert(wf != NULL);
+
+  TCHAR temp[MAX_PATH];
+  _stprintf(temp, _T("XCSoar v%s"), XCSoar_VersionString);
+
+  WindowControl* wc;
+  wc = ((WindowControl *)wf->FindByName(_T("lblVersion")));
+  assert(wc != NULL);
+  wc->SetCaption(temp);
 
   WndButton* wb;
   wb = ((WndButton *)wf->FindByName(_T("cmdSimulator")));
-  if (wb)
-    wb->SetOnClickNotify(OnSimulatorClicked);
+  assert(wb != NULL);
+  wb->SetOnClickNotify(OnSimulatorClicked);
 
   wb = ((WndButton *)wf->FindByName(_T("cmdFly")));
-  if (wb)
-    wb->SetOnClickNotify(OnFlyClicked);
+  assert(wb != NULL);
+  wb->SetOnClickNotify(OnFlyClicked);
 
   bool retval = (wf->ShowModal() == mrOK);
 

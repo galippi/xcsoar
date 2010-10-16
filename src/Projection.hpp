@@ -40,7 +40,7 @@ Copyright_License {
 #define XCSOAR_PROJECTION_HPP
 
 #include "Navigation/GeoPoint.hpp"
-#include "Topology/shapelib/mapprimitive.h"
+#include "Geo/BoundsRectangle.hpp"
 #include "Math/FastRotation.hpp"
 #include "Compiler.h"
 
@@ -60,13 +60,6 @@ public:
 
   void LonLat2Screen(const GeoPoint *ptin, POINT *ptout,
                      unsigned n, unsigned skip) const;
-  void LonLat2Screen(const pointObj* const ptin, POINT *ptout,
-                     const int n, const int skip) const;
-
-  gcc_pure
-  GeoPoint point2GeoPoint(const pointObj& p) const {
-    return GeoPoint(Angle::native(fixed(p.x)), Angle::native(fixed(p.y)));
-  }
 
   const POINT &GetOrigScreen() const {
     return Orig_Screen;
@@ -120,7 +113,7 @@ public:
 
   // used by terrain renderer, topology and airspace
   gcc_pure
-  rectObj CalculateScreenBounds(const fixed scale) const;
+  BoundsRectangle CalculateScreenBounds(const fixed scale) const;
 
 protected:
   gcc_const
@@ -142,7 +135,7 @@ private:
   fixed DrawScale;
   fixed InvDrawScale;
   fixed m_scale_meters_to_screen; 
-  rectObj   screenbounds_latlon;
+  BoundsRectangle screenbounds_latlon;
 };
 
 #endif

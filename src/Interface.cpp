@@ -56,7 +56,6 @@ Copyright_License {
 static Mutex mutexInterfaceTimeout;
 static int interface_timeout;
 static bool doForceShutdown = false;
-static bool ShutdownRequested = false;
 
 InterfaceBlackboard CommonInterface::blackboard;
 HINSTANCE CommonInterface::hInst; // The current instance
@@ -73,7 +72,6 @@ unsigned XCSoarInterface::debounceTimeout = 250;
 #endif
 unsigned ActionInterface::MenuTimeoutMax = MENUTIMEOUTMAX;
 bool CommonInterface::EnableAutoBacklight = true;
-bool CommonInterface::EnableAutoSoundVolume = true;
 
 #include "LogFile.hpp"
 #include "Protection.hpp"
@@ -141,21 +139,21 @@ ActionInterface::SendSettingsMap(const bool trigger_draw)
 }
 
 bool
-XCSoarInterface::InterfaceTimeoutZero(void)
+XCSoarInterface::InterfaceTimeoutZero()
 {
   ScopeLock protect(mutexInterfaceTimeout);
   return (interface_timeout == 0);
 }
 
 void
-XCSoarInterface::InterfaceTimeoutReset(void)
+XCSoarInterface::InterfaceTimeoutReset()
 {
   ScopeLock protect(mutexInterfaceTimeout);
   interface_timeout = 0;
 }
 
 bool
-XCSoarInterface::InterfaceTimeoutCheck(void)
+XCSoarInterface::InterfaceTimeoutCheck()
 {
   ScopeLock protect(mutexInterfaceTimeout);
   if (interface_timeout > 60 * 10) {
@@ -175,21 +173,19 @@ ActionInterface::SignalShutdown(bool force)
 }
 
 bool
-XCSoarInterface::CheckShutdown(void)
+XCSoarInterface::CheckShutdown()
 {
+  static bool ShutdownRequested = false;
+
+  if (doForceShutdown)
+    return true;
+
   if (ShutdownRequested)
     return false;
 
-  bool retval = false;
   ShutdownRequested = true;
-  if (doForceShutdown ||
-      MessageBoxX(_("Quit program?"), _T("XCSoar"),
-                  MB_YESNO | MB_ICONQUESTION) == IDYES)
-    retval = true;
-  else
-    retval = false;
-
-  doForceShutdown = false;
+  bool retval = (MessageBoxX(_("Quit program?"), _T("XCSoar"),
+                             MB_YESNO | MB_ICONQUESTION) == IDYES);
   ShutdownRequested = false;
 
   return retval;

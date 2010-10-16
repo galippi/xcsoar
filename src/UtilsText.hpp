@@ -40,8 +40,6 @@ Copyright_License {
 
 #include <tchar.h>
 
-void ExtractDirectory(TCHAR *Dest, const TCHAR *Source);
-
 // Parse string (new lines etc) and malloc the string
 TCHAR* StringMallocParse(const TCHAR* old_string);
 

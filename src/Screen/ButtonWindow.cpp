@@ -41,8 +41,6 @@ Copyright_License {
 
 #ifdef ENABLE_SDL
 
-#include "Screen/Font.hpp"
-
 void
 ButtonWindow::set(ContainerWindow &parent, const TCHAR *text, unsigned id,
                   int left, int top, unsigned width, unsigned height,
@@ -54,11 +52,6 @@ ButtonWindow::set(ContainerWindow &parent, const TCHAR *text, unsigned id,
 
   this->text = text;
   this->id = id;
-
-  // XXX hard coded path
-  const char *dejavu_ttf =
-    "/usr/share/fonts/truetype/ttf-dejavu/DejaVuSansCondensed.ttf";
-  font.set(dejavu_ttf, 16);
 }
 
 bool
@@ -91,10 +84,15 @@ ButtonWindow::on_paint(Canvas &canvas)
 {
   canvas.draw_button(get_client_rect(), down);
 
-  canvas.select(font);
   SIZE size = canvas.text_size(text.c_str());
   canvas.text((get_width() - size.cx) / 2 + down,
               (get_height() - size.cy) / 2 + down, text.c_str());
+}
+
+bool
+ButtonWindow::on_clicked()
+{
+  return false;
 }
 
 #else /* !ENABLE_SDL */
@@ -102,25 +100,23 @@ ButtonWindow::on_paint(Canvas &canvas)
 #include <commctrl.h>
 
 void
-ButtonWindow::set(ContainerWindow &parent, const TCHAR *text, unsigned id,
-                  int left, int top, unsigned width, unsigned height,
-                  const ButtonWindowStyle style)
+BaseButtonWindow::set(ContainerWindow &parent, const TCHAR *text, unsigned id,
+                      int left, int top, unsigned width, unsigned height,
+                      const WindowStyle style)
 {
   Window::set(&parent, WC_BUTTON, text,
               left, top, width, height,
               style);
 
   ::SetWindowLong(hWnd, GWL_ID, id);
+
+  install_wndproc();
 }
 
-void
-ButtonWindow::set(ContainerWindow &parent, const TCHAR *text,
-                  int left, int top, unsigned width, unsigned height,
-                  const ButtonWindowStyle style)
+bool
+BaseButtonWindow::on_clicked()
 {
-  set(parent, text, COMMAND_BOUNCE_ID,
-      left, top, width, height, style);
-  install_wndproc();
+  return false;
 }
 
 const tstring
@@ -137,9 +133,3 @@ ButtonWindow::get_text() const
 }
 
 #endif /* !ENABLE_SDL */
-
-bool
-ButtonWindow::on_clicked()
-{
-  return false;
-}

@@ -38,51 +38,34 @@ Copyright_License {
 
 #include "DataField/ComboList.hpp"
 
-#include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
-ComboListEntry_t * ComboList::CreateItem(int ItemIndex,
-                                        int DataFieldIndex,
-                                        const TCHAR *StringValue,
-                                        const TCHAR *StringValueFormatted)
-{
-  ComboListEntry_t * theItem;
+ComboList::Item::Item(int _ItemIndex, int _DataFieldIndex,
+                        const TCHAR *_StringValue,
+                        const TCHAR *_StringValueFormatted)
+  :ItemIndex(_ItemIndex), DataFieldIndex(_DataFieldIndex),
+   StringValue(_tcsdup(_StringValue)),
+   StringValueFormatted(_tcsdup(_StringValueFormatted)) {}
 
-  // Copy current strings into structure
-  theItem = (ComboListEntry_t*) malloc(sizeof(ComboListEntry_t));
-  theItem->DataFieldIndex=0;  // NULL is same as 0, so it fails to set it if index value is 0
-  theItem->ItemIndex=0;
-
-  assert(theItem!= NULL);
-
-  theItem->ItemIndex=ItemIndex;
-
-  if (DataFieldIndex != ComboPopupNULL) { // optional
-    theItem->DataFieldIndex=DataFieldIndex;
-  }
-
-  theItem->StringValue = _tcsdup(StringValue != NULL ? StringValue : _T(""));
-  theItem->StringValueFormatted = _tcsdup(StringValueFormatted != NULL
-                                          ? StringValueFormatted : _T(""));
-
-  return theItem;
+ComboList::Item::~Item() {
+  free(StringValue);
+  free(StringValueFormatted);
 }
 
-void ComboList::FreeComboPopupItemList(void)
+void
+ComboList::Clear()
 {
-  for (unsigned i = 0; i < ComboPopupItemCount && i < ComboPopupLISTMAX; i++)
-  {
-    if (ComboPopupItemList[i] != NULL)
-    {
-      free (ComboPopupItemList[i]->StringValue);
-      ComboPopupItemList[i]->StringValue=NULL;
+  for (unsigned i = 0; i < items.size(); i++)
+    delete items[i];
 
-      free (ComboPopupItemList[i]->StringValueFormatted);
-      ComboPopupItemList[i]->StringValueFormatted=NULL;
+  items.clear();
+}
 
-      free (ComboPopupItemList[i]);
-      ComboPopupItemList[i]=NULL;
-
-    }
-  }
+unsigned
+ComboList::Append(ComboList::Item *item)
+{
+  unsigned i = items.size();
+  items.append(item);
+  return i;
 }

@@ -44,6 +44,7 @@ Copyright_License {
 #include "Terrain/RasterTerrain.hpp"
 #include "AirfieldDetails.h"
 #include "Topology/TopologyStore.hpp"
+#include "Topology/TopologyGlue.hpp"
 #include "Dialogs.h"
 #include "Device/device.hpp"
 #include "Message.hpp"
@@ -124,7 +125,7 @@ SettingsLeave()
 
     // re-load terrain
     delete terrain;
-    terrain = RasterTerrain::OpenTerrain();
+    terrain = RasterTerrain::OpenTerrain(file_cache);
 
     // re-load waypoints
     WayPointGlue::ReadWaypoints(way_points, terrain);
@@ -146,7 +147,7 @@ SettingsLeave()
   }
 
   if (TopologyFileChanged)
-    topology->Reload();
+    LoadConfiguredTopology(*topology);
 
   if (AirspaceFileChanged) {
     airspace_warnings.clear();

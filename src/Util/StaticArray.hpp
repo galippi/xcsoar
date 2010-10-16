@@ -39,6 +39,9 @@
  */
 template<class T, unsigned max>
 class StaticArray {
+public:
+  static const unsigned MAX_SIZE = max;
+
 protected:
   unsigned the_size;
   T data[max];
@@ -100,6 +103,18 @@ public:
 
   const T *end() const {
     return data + the_size;
+  }
+
+  T &last() {
+    assert(the_size > 0);
+
+    return data[the_size - 1];
+  }
+
+  const T &last() const {
+    assert(the_size > 0);
+
+    return data[the_size - 1];
   }
 
   bool contains(const T &value) const {

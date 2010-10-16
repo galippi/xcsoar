@@ -42,7 +42,7 @@ Copyright_License {
 #include "Device/Driver.hpp"
 #include "Protection.hpp"
 #include "Message.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "DeviceBlackboard.hpp"
 #include "InputEvents.h"
 #include "LogFile.hpp"
@@ -75,10 +75,10 @@ using std::max;
 
 class VegaDevice : public AbstractDevice {
 private:
-  ComPort *port;
+  Port *port;
 
 public:
-  VegaDevice(ComPort *_port):port(_port) {}
+  VegaDevice(Port *_port):port(_port) {}
 
 public:
   virtual bool ParseNMEA(const char *line, struct NMEA_INFO *info,
@@ -319,7 +319,7 @@ PDVVT(NMEAInputLine &line, NMEA_INFO *GPS_INFO)
   fixed value;
   GPS_INFO->TemperatureAvailable = line.read_checked(value);
   if (GPS_INFO->TemperatureAvailable)
-    GPS_INFO->OutsideAirTemperature = (value / 10) - fixed(273);
+    GPS_INFO->OutsideAirTemperature = Units::ToSysUnit(value / 10, unGradCelcius);
 
   GPS_INFO->HumidityAvailable = line.read_checked(GPS_INFO->RelativeHumidity);
 
@@ -421,7 +421,7 @@ VegaDevice::PutVoice(const TCHAR *Sentence)
 #include "Blackboard.hpp"
 
 static void
-_VarioWriteSettings(ComPort *port)
+_VarioWriteSettings(Port *port)
 {
     char mcbuf[100];
 
@@ -465,7 +465,7 @@ VegaDevice::OnSysTicker()
 }
 
 static Device *
-VegaCreateOnComPort(ComPort *com_port)
+VegaCreateOnPort(Port *com_port)
 {
   return new VegaDevice(com_port);
 }
@@ -473,5 +473,5 @@ VegaCreateOnComPort(ComPort *com_port)
 const struct DeviceRegister vgaDevice = {
   _T("Vega"),
   drfGPS | drfBaroAlt | drfSpeed | drfVario, // drfLogger if FLARM connected
-  VegaCreateOnComPort,
+  VegaCreateOnPort,
 };

@@ -62,9 +62,9 @@ RenderTaskPoint::RenderTaskPoint(Canvas &_canvas,
    map_canvas(_canvas, _projection),
    m_settings_map(_settings_map),
    m_draw_bearing(draw_bearing),
-   pen_leg_active(Pen::DASH, IBLSCALE(2), MapGfx.TaskColor),
-   pen_leg_inactive(Pen::DASH, IBLSCALE(1), MapGfx.TaskColor),
-   pen_leg_arrow(Pen::SOLID, IBLSCALE(1), MapGfx.TaskColor),
+   pen_leg_active(Pen::DASH, IBLSCALE(2), Graphics::TaskColor),
+   pen_leg_inactive(Pen::DASH, IBLSCALE(1), Graphics::TaskColor),
+   pen_leg_arrow(Pen::SOLID, IBLSCALE(1), Graphics::TaskColor),
    pen_isoline(Pen::SOLID, IBLSCALE(2), Color(0,0,255)), 
    m_index(0),
    ozv(_ozv),
@@ -89,7 +89,8 @@ RenderTaskPoint::Visit(const UnorderedTaskPoint& tp)
   }
   if (m_layer == 3) {
     draw_bearing(tp);
-    draw_off_track(tp);
+    if (m_settings_map.EnableDetourCostMarker)
+      draw_off_track(tp);
   }
   m_index++;
 }
@@ -98,7 +99,13 @@ void
 RenderTaskPoint::draw_ordered(const OrderedTaskPoint& tp) 
 {
   if (m_layer == 0) {
+    // draw shaded part of observation zone
     draw_oz_background(tp);
+
+    // Draw clear area on top indicating part of OZ already travelled in.
+    // This provides a simple and intuitive visual representation of
+    // where in the OZ to go to increase scoring distance.
+
     draw_samples(tp);
   }
   
@@ -132,7 +139,8 @@ RenderTaskPoint::Visit(const FinishPoint& tp)
   draw_ordered(tp);
   if (m_layer == 3) {
     draw_bearing(tp);
-    draw_off_track(tp);
+    if (m_settings_map.EnableDetourCostMarker)
+      draw_off_track(tp);
     draw_target(tp);
   }
 }
@@ -146,7 +154,8 @@ RenderTaskPoint::Visit(const AATPoint& tp)
   if (m_layer == 3) {
     draw_isoline(tp);
     draw_bearing(tp);
-    draw_off_track(tp);
+    if (m_settings_map.EnableDetourCostMarker)
+      draw_off_track(tp);
     draw_target(tp);
   }
 }
@@ -159,7 +168,8 @@ RenderTaskPoint::Visit(const ASTPoint& tp)
   draw_ordered(tp);
   if (m_layer == 3) {
     draw_bearing(tp);
-    draw_off_track(tp);
+    if (m_settings_map.EnableDetourCostMarker)
+      draw_off_track(tp);
     draw_target(tp);
   }
 }
@@ -223,7 +233,7 @@ RenderTaskPoint::draw_bearing(const TaskPoint &tp)
   if (!do_draw_bearing(tp)) 
     return;
 
-  m_buffer.select(MapGfx.hpBearing);
+  m_buffer.select(Graphics::hpBearing);
   map_canvas.line(m_location, tp.get_location_remaining());
 }
 
@@ -236,7 +246,7 @@ RenderTaskPoint::draw_target(const TaskPoint &tp)
 /*  
     POINT sc;
     if (map.LonLat2ScreenIfVisible(tp.get_location_remaining(), &sc)) {
-    MapGfx.hBmpTarget.draw(get_canvas(), get_bitmap_canvas(), sc.x, sc.y);
+    Graphics::hBmpTarget.draw(get_canvas(), get_bitmap_canvas(), sc.x, sc.y);
     }
 */
 }
@@ -302,10 +312,10 @@ RenderTaskPoint::draw_samples(const OrderedTaskPoint& tp)
     return;
   }
   /*
-    m_buffer.set_text_color(MapGfx.Colours[m_settings_map.
+    m_buffer.set_text_color(Graphics::Colours[m_settings_map.
     iAirspaceColour[1]]);
     // get brush, can be solid or a 1bpp bitmap
-    m_buffer.select(MapGfx.hAirspaceBrushes[m_settings_map.
+    m_buffer.select(Graphics::hAirspaceBrushes[m_settings_map.
     iAirspaceBrush[1]]);
     */
     // erase where aircraft has been

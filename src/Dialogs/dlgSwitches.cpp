@@ -40,26 +40,20 @@ Copyright_License {
 #include "Blackboard.hpp"
 #include "Units.hpp"
 #include "InputEvents.h"
-#include "DataField/Base.hpp"
+#include "DataField/Boolean.hpp"
 #include "MainWindow.hpp"
 
-static WndForm *wf=NULL;
+static WndForm *wf = NULL;
 
 static void
 Update(const TCHAR *name, bool value)
 {
-  WndProperty *wp = (WndProperty*)wf->FindByName(name);
-  if (wp == NULL)
-    return;
-
-  DataField *df = wp->GetDataField();
-  if (df->GetAsBoolean() != value) {
-    wp->GetDataField()->Set(value);
-    wp->RefreshDisplay();
-  }
+  LoadFormProperty(*wf, name, value);
 }
 
-static void UpdateValues() {
+static void
+UpdateValues()
+{
   const SWITCH_INFO &switches = XCSoarInterface::Basic().SwitchState;
 
   Update(_T("prpFlapLanding"), switches.FlapLanding);
@@ -77,29 +71,30 @@ static void UpdateValues() {
   Update(_T("prpVarioCircling"), switches.VarioCircling);
 }
 
-static int OnTimerNotify(WindowControl * Sender) {
-	(void)Sender;
+static void
+OnTimerNotify(WindowControl * Sender)
+{
+  (void)Sender;
   UpdateValues();
-  return 0;
 }
 
-static void OnCloseClicked(WindowControl * Sender){
-	(void)Sender;
+static void
+OnCloseClicked(WindowControl * Sender)
+{
+  (void)Sender;
   wf->SetModalResult(mrOK);
 }
 
-
-static CallBackTableEntry_t CallBackTable[]={
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnCloseClicked),
   DeclareCallBackEntry(NULL)
 };
 
-
-
-void dlgSwitchesShowModal(void){
-  wf = LoadDialog(CallBackTable,
-		      XCSoarInterface::main_window,
-		      _T("IDR_XML_SWITCHES"));
+void
+dlgSwitchesShowModal(void)
+{
+  wf = LoadDialog(CallBackTable, XCSoarInterface::main_window,
+		              _T("IDR_XML_SWITCHES"));
   if (wf == NULL)
     return;
 

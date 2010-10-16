@@ -4,7 +4,7 @@
    unsigned C9X typedefs. The ISO C 9X: 7.18 Integer types file is stdint.h
  */
 
-#include <zzip/conf.h>
+#include <zzip/conf.h> 
 
 /* enforce use of ifdef'd C9X entries in system headers */
 #define __USE_ANSI 1
@@ -14,9 +14,9 @@
     /* ISO C 9X: 7.18 Integer types <stdint.h> */
 #include <stdint.h>
 #elif defined ZZIP_HAVE_SYS_INT_TYPES_H /*solaris*/
-//JMW#include <sys/int_types.h>
+#include <sys/int_types.h>
 #elif defined ZZIP_HAVE_INTTYPES_H /*freebsd*/
-//JMW#include <inttypes.h>
+#include <inttypes.h>
 #else
     typedef unsigned char uint8_t;      typedef signed char int8_t;
 
@@ -38,8 +38,7 @@
     typedef unsigned long uint32_t;     typedef signed long int32_t;
 # endif
 
-typedef unsigned _zzip___int64 uint64_t;
-typedef _zzip___int64 int64_t;
+typedef unsigned _zzip___int64 uint64_t; typedef _zzip___int64 int64_t;
 #endif
 
 #endif /*_ZZIP_STDINT_H*/

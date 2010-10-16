@@ -39,10 +39,12 @@ Copyright_License {
 #include "Dialogs/Internal.hpp"
 #include "Protection.hpp"
 #include "Units.hpp"
-#include "DataField/Base.hpp"
+#include "DataField/Float.hpp"
 #include "Screen/SingleWindow.hpp"
 #include "Task/ProtectedTaskManager.hpp"
 #include "Components.hpp"
+#include "DeviceBlackboard.hpp"
+#include "Screen/Layout.hpp"
 
 #include <math.h>
 #include <algorithm>
@@ -76,6 +78,14 @@ GetCruiseEfficiency(void)
 }
 
 static void
+SetMC(fixed mc) {
+  GlidePolar polar = protected_task_manager.get_glide_polar();
+  polar.set_mc(mc);
+  protected_task_manager.set_glide_polar(polar);
+  device_blackboard.SetMC(mc);
+}
+
+static void
 RefreshCalculator(void)
 {
   WndProperty* wp;
@@ -101,17 +111,20 @@ RefreshCalculator(void)
     }
   }
 
+  fixed rPlanned = XCSoarInterface::Calculated().task_stats.total.solution_planned.Vector.Distance;
+
   wp = (WndProperty*)wf->FindByName(_T("prpDistance"));
   if (wp) {
-    wp->GetDataField()->SetAsFloat(Units::ToUserDistance(
-        XCSoarInterface::Calculated().task_stats.total.solution_planned.Vector.Distance));
+    wp->GetDataField()->SetAsFloat(Units::ToUserDistance(rPlanned));
     wp->GetDataField()->SetUnits(Units::GetDistanceName());
     wp->RefreshDisplay();
   }
 
   wp = (WndProperty*)wf->FindByName(_T("prpMacCready"));
   if (wp) {
-    wp->GetDataField()->SetUnits(Units::GetVerticalSpeedName());
+    DataFieldFloat &df = *(DataFieldFloat *)wp->GetDataField();
+    df.SetUnits(Units::GetVerticalSpeedName());
+    df.Set(Units::ToUserVSpeed(protected_task_manager.get_glide_polar().get_mc()));
     wp->RefreshDisplay();
   }
 
@@ -122,16 +135,16 @@ RefreshCalculator(void)
     wp->RefreshDisplay();
   }
 
-  /*
   wp = (WndProperty*)wf->FindByName(_T("prpRange"));
   if (wp) {
     wp->RefreshDisplay();
-    wp->set_visible(task.getSettings().AATEnabled &&
-                    task.ValidTaskPoint(task.getActiveIndex() + 1));
-    wp->GetDataField()->SetAsFloat(Range*100.0);
+    fixed rMax = XCSoarInterface::Calculated().task_stats.distance_max;
+    fixed rMin = XCSoarInterface::Calculated().task_stats.distance_min;
+    fixed range = (fixed_two * (rPlanned - rMin) / (rMax - rMin)) - fixed_one;
+    wp->GetDataField()->SetAsFloat(range * fixed(100));
     wp->RefreshDisplay();
   }
-
+/*
   fixed v1;
   if (XCSoarInterface::Calculated().TaskTimeToGo>0) {
     v1 = XCSoarInterface::Calculated().TaskDistanceToGo/
@@ -159,19 +172,10 @@ RefreshCalculator(void)
 
   wp = (WndProperty*)wf->FindByName(_T("prpCruiseEfficiency"));
   if (wp) {
-    wp->GetDataField()->SetAsFloat(cruise_efficiency * 100);
+    DataFieldFloat *df = (DataFieldFloat *)wp->GetDataField();
+    df->Set(XCSoarInterface::Calculated().task_stats.cruise_efficiency * fixed(100));
     wp->RefreshDisplay();
   }
-}
-
-static void
-DoOptimise(void)
-{
-  // should do a GUI::ExchangeBlackboard() here and use local storage
-
-  targetManipEvent.trigger();
-  // ... OLD_TASK \todo
-  targetManipEvent.reset();
 }
 
 static void
@@ -179,67 +183,35 @@ OnTargetClicked(WindowControl * Sender)
 {
   (void)Sender;
   wf->hide();
-#ifdef OLD_TASK
-  dlgTarget();
-  // find start value for range (it may have changed)
-  Range = task.AdjustAATTargets(2.0);
-  RefreshCalculator();
-#endif
+  dlgTargetShowModal();
   wf->show();
 }
 
+static void OnTimerNotify(WindowControl * Sender) {
+  (void)Sender;
+  RefreshCalculator();
+}
 
 static void
 OnMacCreadyData(DataField *Sender, DataField::DataAccessKind_t Mode)
 {
+  DataFieldFloat *df = (DataFieldFloat *)Sender;
+
   fixed MACCREADY;
   switch (Mode) {
   case DataField::daSpecial:
     if (positive(XCSoarInterface::Calculated().timeCircling)) {
       MACCREADY = XCSoarInterface::Calculated().TotalHeightClimb /
                   XCSoarInterface::Calculated().timeCircling;
-      Sender->Set(Units::ToUserVSpeed(MACCREADY));
-#ifdef OLD_TASK
-      GlidePolar::SetMacCready(MACCREADY);
-#endif
+      df->Set(Units::ToUserVSpeed(MACCREADY));
+      SetMC(MACCREADY);
       RefreshCalculator();
     }
     break;
-  case DataField::daGet:
-    Sender->Set(Units::ToUserVSpeed(protected_task_manager.get_glide_polar().get_mc()));
-    break;
-  case DataField::daPut:
   case DataField::daChange:
     MACCREADY = Units::ToSysVSpeed(Sender->GetAsFixed());
-#ifdef OLD_TASK
-    GlidePolar::SetMacCready(MACCREADY);
-#endif
+    SetMC(MACCREADY);
     RefreshCalculator();
-    break;
-  }
-}
-
-static void
-OnRangeData(DataField *Sender, DataField::DataAccessKind_t Mode)
-{
-  fixed rthis;
-  switch (Mode) {
-  case DataField::daSpecial:
-    DoOptimise();
-    break;
-  case DataField::daGet:
-    //      Sender->Set(Range*100.0);
-    break;
-  case DataField::daPut:
-  case DataField::daChange:
-    rthis = Sender->GetAsFixed() / 100;
-#ifdef OLD_TASK
-    if (fabs(Range - rthis) > fixed_one / 100) {
-      Range = rthis;
-      task.AdjustAATTargets(Range);
-      RefreshCalculator();
-    }
-#endif
     break;
   }
 }
@@ -251,8 +223,6 @@ OnCruiseEfficiencyData(DataField *Sender, DataField::DataAccessKind_t Mode)
   (void)clast; // unused for now
 
   switch (Mode) {
-  case DataField::daGet:
-    break;
   case DataField::daSpecial:
     GetCruiseEfficiency();
 #ifdef OLD_TASK
@@ -262,7 +232,6 @@ OnCruiseEfficiencyData(DataField *Sender, DataField::DataAccessKind_t Mode)
     }
 #endif
     break;
-  case DataField::daPut:
   case DataField::daChange:
     cruise_efficiency = Sender->GetAsFixed() / 100;
 #ifdef OLD_TASK
@@ -275,18 +244,11 @@ OnCruiseEfficiencyData(DataField *Sender, DataField::DataAccessKind_t Mode)
   }
 }
 
-static void
-OnOptimiseClicked(WindowControl * Sender)
-{
-  DoOptimise();
-}
 
-static CallBackTableEntry_t CallBackTable[] = {
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnMacCreadyData),
-  DeclareCallBackEntry(OnRangeData),
   DeclareCallBackEntry(OnOKClicked),
   DeclareCallBackEntry(OnCancelClicked),
-  DeclareCallBackEntry(OnOptimiseClicked),
   DeclareCallBackEntry(OnTargetClicked),
   DeclareCallBackEntry(OnCruiseEfficiencyData),
   DeclareCallBackEntry(NULL)
@@ -295,38 +257,38 @@ static CallBackTableEntry_t CallBackTable[] = {
 void
 dlgTaskCalculatorShowModal(SingleWindow &parent)
 {
-  wf = LoadDialog(CallBackTable, parent, _T("IDR_XML_TASKCALCULATOR"));
+  if (!Layout::landscape) {
+    wf = LoadDialog(CallBackTable,
+                        parent,
+                        _T("IDR_XML_TASKCALCULATOR"));
+  } else {
+    wf = LoadDialog(CallBackTable,
+                        parent,
+                        _T("IDR_XML_TASKCALCULATOR_L"));
+  }
   if (!wf)
     return;
 
   GlidePolar polar = protected_task_manager.get_glide_polar();
 
   fixed CRUISE_EFFICIENCY_enter = polar.get_cruise_efficiency();
+  fixed MACCREADY_enter = protected_task_manager.get_glide_polar().get_mc();
 
   emc = XCSoarInterface::Calculated().task_stats.effective_mc;
 
   cruise_efficiency = CRUISE_EFFICIENCY_enter;
 
-  // find start value for range
-#ifdef OLD_TASK
-  Range = task.AdjustAATTargets(2.0);
-#endif
-
   RefreshCalculator();
 
-#ifdef OLD_TASK
-  if (!task.getSettings().AATEnabled ||
-      !task.ValidTaskPoint(task.getActiveIndex() + 1))
-    ((WndButton *)wf->FindByName(_T("Optimise")))->hide();
-
-  if (!task.ValidTaskPoint(task.getActiveIndex()))
-    ((WndButton *)wf->FindByName(_T("Target")))->hide();
-#endif
+  if (!XCSoarInterface::Calculated().common_stats.ordered_has_targets) {
+    ((WndButton *)wf->FindByName(_T("prpRange")))->hide();
+  }
+  wf->SetTimerNotify(OnTimerNotify);
 
   if (wf->ShowModal() == mrCancel) {
     // todo: restore task settings.
+    SetMC(MACCREADY_enter);
 #ifdef OLD_TASK
-    GlidePolar::SetMacCready(MACCREADY_enter);
     GlidePolar::SetCruiseEfficiency(CRUISE_EFFICIENCY_enter);
 #endif
   }

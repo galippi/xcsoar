@@ -58,7 +58,7 @@ MapWindow::DrawCrossHairs(Canvas &canvas) const
   Pen dash_pen(Pen::DASH, 1, Color(50, 50, 50));
   canvas.select(dash_pen);
 
-  const POINT Orig_Screen = projection.GetOrigScreen();
+  const POINT Orig_Screen = render_projection.GetOrigScreen();
 
   canvas.line(Orig_Screen.x + 20, Orig_Screen.y,
               Orig_Screen.x - 20, Orig_Screen.y);
@@ -91,18 +91,18 @@ MapWindow::DrawAircraft(Canvas &canvas) const
 
   int n = sizeof(Aircraft) / sizeof(Aircraft[0]);
 
-  const Angle angle = projection.GetDisplayAircraftAngle() +
+  const Angle angle = render_projection.GetDisplayAircraftAngle() +
                       (Basic().Heading - Basic().TrackBearing);
 
-  PolygonRotateShift(Aircraft, n, projection.GetOrigAircraft().x - 1,
-                     projection.GetOrigAircraft().y, angle);
+  PolygonRotateShift(Aircraft, n, render_projection.GetOrigAircraft().x - 1,
+                     render_projection.GetOrigAircraft().y, angle);
 
-  canvas.select(MapGfx.hpAircraft);
+  canvas.select(Graphics::hpAircraft);
   canvas.polygon(Aircraft, n);
 
   canvas.black_brush();
 
-  canvas.select(MapGfx.hpAircraftBorder);
+  canvas.select(Graphics::hpAircraftBorder);
   canvas.polygon(Aircraft, n);
 }
 
@@ -114,10 +114,10 @@ MapWindow::DrawGPSStatus(Canvas &canvas, const RECT &rc,
   MaskedIcon *icon = NULL;
 
   if (!gps.Connected) {
-    icon = &MapGfx.hGPSStatus2;
+    icon = &Graphics::hGPSStatus2;
     txt = _("GPS not connected");
   } else if (gps.NAVWarning || (gps.SatellitesUsed == 0)) {
-    icon = &MapGfx.hGPSStatus1;
+    icon = &Graphics::hGPSStatus1;
     txt = _("GPS waiting for fix");
   } else {
     return; // early exit
@@ -159,7 +159,7 @@ MapWindow::DrawFlightMode(Canvas &canvas, const RECT &rc) const
   if (drawlogger) {
     offset -= 7;
     MaskedIcon &icon = (logger.isLoggerActive() && flip) ?
-                       MapGfx.hLogger : MapGfx.hLoggerOff;
+                       Graphics::hLogger : Graphics::hLoggerOff;
 
     icon.draw(canvas, bitmap_canvas,
               rc.right + IBLSCALE(offset),
@@ -169,13 +169,13 @@ MapWindow::DrawFlightMode(Canvas &canvas, const RECT &rc) const
   MaskedIcon *bmp;
 
   if (task != NULL && (task->get_mode() == TaskManager::MODE_ABORT))
-    bmp = &MapGfx.hAbort;
-  else if (projection.GetDisplayMode() == dmCircling)
-    bmp = &MapGfx.hClimb;
-  else if (projection.GetDisplayMode() == dmFinalGlide)
-    bmp = &MapGfx.hFinalGlide;
+    bmp = &Graphics::hAbort;
+  else if (render_projection.GetDisplayMode() == dmCircling)
+    bmp = &Graphics::hClimb;
+  else if (render_projection.GetDisplayMode() == dmFinalGlide)
+    bmp = &Graphics::hFinalGlide;
   else
-    bmp = &MapGfx.hCruise;
+    bmp = &Graphics::hCruise;
 
   offset -= 24;
 
@@ -204,12 +204,12 @@ MapWindow::DrawWindAtAircraft2(Canvas &canvas, const POINT &Start,
     tsize.cx = tsize.cx / 2;
   }
 
-  canvas.select(MapGfx.hpWind);
-  canvas.select(MapGfx.hbWind);
+  canvas.select(Graphics::hpWind);
+  canvas.select(Graphics::hbWind);
 
   int wmag = iround(4 * wind.norm);
 
-  int kx = tsize.cx / Layout::scale / 2;
+  int kx = tsize.cx / Layout::FastScale(1) / 2;
 
   POINT Arrow[7] = {
       { 0, -20 },
@@ -225,7 +225,7 @@ MapWindow::DrawWindAtAircraft2(Canvas &canvas, const POINT &Start,
     Arrow[i].y -= wmag;
 
   PolygonRotateShift(Arrow, 7, Start.x, Start.y,
-                     wind.bearing - projection.GetDisplayAngle());
+                     wind.bearing - render_projection.GetDisplayAngle());
 
   canvas.polygon(Arrow, 5);
 
@@ -235,7 +235,7 @@ MapWindow::DrawWindAtAircraft2(Canvas &canvas, const POINT &Start,
       { 0, Layout::FastScale(-26 - min(20, wmag) * 3) },
     };
 
-    Angle angle = (wind.bearing - projection.GetDisplayAngle()).as_bearing();
+    Angle angle = (wind.bearing - render_projection.GetDisplayAngle()).as_bearing();
     PolygonRotateShift(Tail, 2, Start.x, Start.y, angle);
 
     // optionally draw dashed line
@@ -405,29 +405,29 @@ MapWindow::DrawFinalGlide(Canvas &canvas, const RECT &rc) const
     // draw actual glide bar
     if (Offset <= 0) {
       if (Calculated().common_stats.landable_reachable) {
-        canvas.select(MapGfx.hpFinalGlideBelowLandable);
-        canvas.select(MapGfx.hbFinalGlideBelowLandable);
+        canvas.select(Graphics::hpFinalGlideBelowLandable);
+        canvas.select(Graphics::hbFinalGlideBelowLandable);
       } else {
-        canvas.select(MapGfx.hpFinalGlideBelow);
-        canvas.select(MapGfx.hbFinalGlideBelow);
+        canvas.select(Graphics::hpFinalGlideBelow);
+        canvas.select(Graphics::hbFinalGlideBelow);
       }
     } else {
-      canvas.select(MapGfx.hpFinalGlideAbove);
-      canvas.select(MapGfx.hbFinalGlideAbove);
+      canvas.select(Graphics::hpFinalGlideAbove);
+      canvas.select(Graphics::hbFinalGlideAbove);
     }
     canvas.polygon(GlideBar, 6);
 
     // draw glide bar at mc 0
     if (Offset0 <= 0) {
       if (Calculated().common_stats.landable_reachable) {
-        canvas.select(MapGfx.hpFinalGlideBelowLandable);
+        canvas.select(Graphics::hpFinalGlideBelowLandable);
         canvas.hollow_brush();
       } else {
-        canvas.select(MapGfx.hpFinalGlideBelow);
+        canvas.select(Graphics::hpFinalGlideBelow);
         canvas.hollow_brush();
       }
     } else {
-      canvas.select(MapGfx.hpFinalGlideAbove);
+      canvas.select(Graphics::hpFinalGlideAbove);
       canvas.hollow_brush();
     }
 
@@ -436,7 +436,7 @@ MapWindow::DrawFinalGlide(Canvas &canvas, const RECT &rc) const
 
     // draw x on final glide bar if unreachable at current Mc
     if (!Calculated().task_stats.total.achievable()) {
-      canvas.select(MapGfx.hpAircraftBorder);
+      canvas.select(Graphics::hpAircraftBorder);
       canvas.line(Layout::Scale(9 - 5), y0 + Layout::Scale(9 - 5),
                   Layout::Scale(9 + 5), y0 + Layout::Scale(9 + 5));
       canvas.line(Layout::Scale(9 - 5), y0 + Layout::Scale(9 + 5),
@@ -474,10 +474,9 @@ MapWindow::DrawFinalGlide(Canvas &canvas, const RECT &rc) const
       canvas.select(Fonts::MapBold);
       TextSize = canvas.text_size(Value);
 
-      canvas.white_brush();
-      canvas.white_pen();
-      canvas.rectangle(x, y, x + IBLSCALE(1) + TextSize.cx,
-                       y + Fonts::MapBold.get_capital_height() + IBLSCALE(2));
+      canvas.fill_rectangle(x, y, x + IBLSCALE(1) + TextSize.cx,
+                            y + Fonts::MapBold.get_capital_height() + IBLSCALE(2),
+                            Color::WHITE);
 
       canvas.set_text_color(Color::BLACK);
       canvas.text(x + IBLSCALE(1),
@@ -505,12 +504,12 @@ MapWindow::DrawCompass(Canvas &canvas, const RECT &rc) const
 
     POINT Arrow[5] = { { 0, -18 }, { -6, 10 }, { 0, 0 }, { 6, 10 }, { 0, -18 } };
 
-    canvas.select(MapGfx.hpCompass);
-    canvas.select(MapGfx.hbCompass);
+    canvas.select(Graphics::hpCompass);
+    canvas.select(Graphics::hbCompass);
 
     // North arrow
     PolygonRotateShift(Arrow, 5, Start.x, Start.y,
-                       Angle::native(fixed_zero) - projection.GetDisplayAngle());
+                       Angle::native(fixed_zero) - render_projection.GetDisplayAngle());
     canvas.polygon(Arrow, 5);
   } else if (Appearance.CompassAppearance == apCompassAltA) {
 
@@ -518,7 +517,7 @@ MapWindow::DrawCompass(Canvas &canvas, const RECT &rc) const
     static int lastRcRight = 0;
     static POINT Arrow[5] = { { 0, -11 }, { -5, 9 }, { 0, 3 }, { 5, 9 }, { 0, -11 } };
 
-    if (lastDisplayAngle != projection.GetDisplayAngle() ||
+    if (lastDisplayAngle != render_projection.GetDisplayAngle() ||
         lastRcRight != rc.right) {
       Arrow[0].x = 0;
       Arrow[0].y = -11;
@@ -536,14 +535,14 @@ MapWindow::DrawCompass(Canvas &canvas, const RECT &rc) const
 
       // North arrow
       PolygonRotateShift(Arrow, 5, Start.x, Start.y,
-                         Angle::native(fixed_zero) - projection.GetDisplayAngle());
+                         Angle::native(fixed_zero) - render_projection.GetDisplayAngle());
 
-      lastDisplayAngle = projection.GetDisplayAngle();
+      lastDisplayAngle = render_projection.GetDisplayAngle();
       lastRcRight = rc.right;
     }
     canvas.polygon(Arrow, 5);
 
-    canvas.select(MapGfx.hpCompass);
+    canvas.select(Graphics::hpCompass);
     canvas.polygon(Arrow, 5);
   }
 }
@@ -556,18 +555,18 @@ MapWindow::DrawBestCruiseTrack(Canvas &canvas) const
       < fixed(0.010))
     return;
 
-  canvas.select(MapGfx.hpBestCruiseTrack);
-  canvas.select(MapGfx.hbBestCruiseTrack);
+  canvas.select(Graphics::hpBestCruiseTrack);
+  canvas.select(Graphics::hbBestCruiseTrack);
 
   const Angle angle = Calculated().task_stats.current_leg.solution_remaining.CruiseTrackBearing
-                    - projection.GetDisplayAngle();
+                    - render_projection.GetDisplayAngle();
 
   POINT Arrow[] = { { -1, -40 }, { -1, -62 }, { -6, -62 }, {  0, -70 },
                     {  6, -62 }, {  1, -62 }, {  1, -40 }, { -1, -40 } };
 
   PolygonRotateShift(Arrow, sizeof(Arrow) / sizeof(Arrow[0]),
-                     projection.GetOrigAircraft().x,
-                     projection.GetOrigAircraft().y,
+                     render_projection.GetOrigAircraft().x,
+                     render_projection.GetOrigAircraft().y,
                      angle);
 
   canvas.polygon(Arrow, sizeof(Arrow) / sizeof(Arrow[0]));

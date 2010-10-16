@@ -70,7 +70,7 @@ OnStartPointPaintListItem(Canvas &canvas, const RECT rc, unsigned i)
       }
     }
     if (i==i0) {
-      _tcscpy(label, _T("(add waypoint)"));
+      _tcscpy(label, _("(add waypoint)"));
     } else {
       _tcscpy(label, _T(" "));
     }
@@ -111,7 +111,7 @@ static void OnClearClicked(WindowControl * Sender){
 }
 
 
-static CallBackTableEntry_t CallBackTable[]={
+static CallBackTableEntry CallBackTable[]={
   DeclareCallBackEntry(OnCloseClicked),
   DeclareCallBackEntry(OnClearClicked),
   DeclareCallBackEntry(NULL)

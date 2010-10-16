@@ -39,6 +39,8 @@ Copyright_License {
 #ifndef XCSOAR_HARDWARE_DISPLAY_H
 #define XCSOAR_HARDWARE_DISPLAY_H
 
+#include "Compiler.h"
+
 namespace Display {
 #if defined(_WIN32_WCE) && !defined(GNAV)
 #define HAVE_HARDWARE_BLANK
@@ -62,10 +64,26 @@ namespace Display {
   }
 #endif
 
+  enum orientation {
+    ORIENTATION_DEFAULT,
+    ORIENTATION_PORTRAIT,
+    ORIENTATION_LANDSCAPE,
+  };
+
+  gcc_const
+  bool RotateSupported();
+
   /**
    * Change the orientation of the screen.
    */
-  bool Rotate();
+  bool
+  Rotate(enum orientation orientation);
+
+  /**
+   * Restores the display rotation setting.
+   */
+  bool
+  RotateRestore();
 
   /**
    * Returns the number of pixels per logical inch along the screen width

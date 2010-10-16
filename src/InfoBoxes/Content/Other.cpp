@@ -40,7 +40,7 @@ Copyright_License {
 
 #include "InfoBoxes/InfoBoxWindow.hpp"
 #include "Interface.hpp"
-#include "Hardware/Battery.h"
+#include "Hardware/Battery.hpp"
 #include "Asset.hpp"
 
 #include <tchar.h>
@@ -64,23 +64,66 @@ InfoBoxContentGLoad::Update(InfoBoxWindow &infobox)
 void
 InfoBoxContentBattery::Update(InfoBoxWindow &infobox)
 {
-  // Set Value
-#ifdef HAVE_BATTERY
   TCHAR tmp[32];
-  if (!is_altair()) {
-    _stprintf(tmp, _T("%2.1fV"), PDABatteryPercent);
-  } else {
-    if (negative(XCSoarInterface::Basic().SupplyBatteryVoltage)) {
-      infobox.SetInvalid();
-      return;
-    }
-    _stprintf(tmp, _T("%d%%"),
-              (int)XCSoarInterface::Basic().SupplyBatteryVoltage);
+
+#ifdef HAVE_BATTERY
+
+  bool DisplaySupplyVoltageAsValue=false;
+  switch (Power::External::Status) {
+    case Power::External::OFF:
+      infobox.SetComment(_("AC OFF"));
+      break;
+    case Power::External::ON:
+      if (XCSoarInterface::Basic().SupplyBatteryVoltage <= (fixed)0)
+        infobox.SetComment(_("AC ON"));
+      else{
+        DisplaySupplyVoltageAsValue = true;
+        _stprintf(tmp, _T("%2.1fV"),
+                  (double)XCSoarInterface::Basic().SupplyBatteryVoltage);
+        infobox.SetValue(tmp);
+      }
+      break;
+    case Power::External::UNKNOWN:
+    default:
+      infobox.SetCommentInvalid();
   }
-  infobox.SetValue(tmp);
-#else
-  infobox.SetInvalid();
+  switch (Power::Battery::Status){
+    case Power::Battery::HIGH:
+    case Power::Battery::LOW:
+    case Power::Battery::CRITICAL:
+    case Power::Battery::CHARGING:
+      if (Power::Battery::RemainingPercentValid){
+        _stprintf(tmp, _T("%d%%"), Power::Battery::RemainingPercent);
+        if (!DisplaySupplyVoltageAsValue)
+          infobox.SetValue(tmp);
+        else
+          infobox.SetComment(tmp);
+      }
+      else
+        if (!DisplaySupplyVoltageAsValue)
+          infobox.SetValueInvalid();
+        else
+          infobox.SetCommentInvalid();
+      break;
+    case Power::Battery::NOBATTERY:
+    case Power::Battery::UNKNOWN:
+      if (!DisplaySupplyVoltageAsValue)
+        infobox.SetValueInvalid();
+      else
+        infobox.SetCommentInvalid();
+  }
+  return;
+
 #endif
+
+  if (!negative(XCSoarInterface::Basic().SupplyBatteryVoltage)) {
+    _stprintf(tmp, _T("%2.1fV"),
+              (double)XCSoarInterface::Basic().SupplyBatteryVoltage);
+    infobox.SetValue(tmp);
+    return;
+  }
+
+  infobox.SetInvalid();
 }
 
 void

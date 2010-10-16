@@ -40,11 +40,14 @@ Copyright_License {
 #define XCSOAR_DIALOGS_H
 
 #include "FLARM/FlarmId.hpp"
+#include "InfoBoxes/InfoBoxManager.hpp"
+#include "Dialogs/ListPicker.hpp"
 
 #include <tchar.h>
 #include "Util/tstring.hpp"
 
 struct GeoPoint;
+class ComboList;
 class SingleWindow;
 class WndProperty;
 class Waypoint;
@@ -53,6 +56,9 @@ class Airspaces;
 class AbstractAirspace;
 class AbstractTaskFactory;
 class OrderedTaskPoint;
+namespace Pages {
+  struct PageLayout;
+}
 
 void StartupScreen();
 
@@ -81,10 +87,21 @@ void dlgHelpShowModal(SingleWindow &parent, const TCHAR* Caption,
 
 void dlgChecklistShowModal();
 void dlgConfigurationShowModal();
+void dlgConfigFontsShowModal();
+void dlgConfigWaypointsShowModal();
+void dlgConfigInfoboxesShowModal(InfoBoxManager::mode _mode);
+Pages::PageLayout dlgConfigPageShowModal(Pages::PageLayout _pl, bool include_empty);
 void dlgVegaDemoShowModal();
 bool dlgConfigurationVarioShowModal();
 void dlgLoggerReplayShowModal();
-void dlgStartupShowModal();
+
+/**
+ * @return true on success, false if the user has pressed the "Quit"
+ * button
+ */
+bool
+dlgStartupShowModal();
+
 bool dlgSimulatorPromptShowModal();
 
 
@@ -144,13 +161,18 @@ void dlgStartPointShowModal();
 bool dlgWaypointEditShowModal(Waypoint &way_point);
 
 void dlgWeatherShowModal();
-void dlgTarget();
+void dlgTargetShowModal();
 void dlgThermalAssistantShowModal();
 void dlgFlarmTrafficShowModal();
 void dlgFlarmTrafficDetailsShowModal(FlarmId id);
 bool dlgTextEntryKeyboardShowModal(TCHAR *text, int width = 0,
                                    AllowedCharactersCallback_t accb=NULL);
 void dlgNumberEntryKeyboardShowModal(int *value, int width = 0);
+
+int
+ComboPicker(SingleWindow &parent, const TCHAR *caption,
+            const ComboList &combo_list,
+            ListHelpCallback_t help_callback);
 
 int dlgComboPicker(SingleWindow &parent, WndProperty *theProperty);
 

@@ -38,11 +38,11 @@ Copyright_License {
 
 #include "Version.hpp"
 
-#ifndef GIT_COMMIT_ID
-#define GIT_COMMIT_ID
+#ifndef XCSOAR_VERSION
+#error Macro "XCSOAR_VERSION" is not defined.  Check build/version.mk!
 #endif
 
-#define VERSION "6.0"
+#define VERSION XCSOAR_VERSION
 
 #ifdef GNAV
   #define TARGET "Altair"
@@ -51,13 +51,22 @@ Copyright_License {
 #elif !defined(_WIN32_WCE)
   #define TARGET "PC"
 #else
-  // TODO code: consider adding PPC, 2002, 2003 (not enough room now)
-  #define TARGET "PPC"
+  #if _WIN32_WCE >= 0x0500
+    #define TARGET "WM5"
+  #elif _WIN32_WCE >= 0x0400
+    #define TARGET "PPC2003"
+  #else
+    #define TARGET "PPC2000"
+  #endif
 #endif
 
 #define VERSION_SUFFIX ""
 
+#ifdef GIT_COMMIT_ID
 #define GIT_SUFFIX "~git#" GIT_COMMIT_ID
+#else
+#define GIT_SUFFIX
+#endif
 
 const TCHAR XCSoar_Version[] = _T(VERSION);
 const TCHAR XCSoar_VersionLong[] = _T(VERSION VERSION_SUFFIX);

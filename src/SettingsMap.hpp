@@ -77,7 +77,6 @@ typedef enum {
 struct SETTINGS_MAP {
   /** Map zooms in on circling */
   bool CircleZoom;
-  bool ExtendedVisualGlide;
   /** Map will show topology */
   bool EnableTopology;
   /** Map will show terrain */
@@ -90,6 +89,8 @@ struct SETTINGS_MAP {
   unsigned char DeclutterLabels;
   /** Snailtrail wind drifting in circling mode */
   bool EnableTrailDrift;
+  /** Indicate extra distance reqd. if deviating from target heading */
+  bool EnableDetourCostMarker;
   /** Show compass in cruise mode */
   bool EnableCDICruise;
   /** Show compass in circling mode */
@@ -101,7 +102,6 @@ struct SETTINGS_MAP {
   /** What type of text to draw next to the waypoint icon */
   DisplayTextType_t DisplayTextType;
   int TrailActive;
-  int VisualGlide;
   /** Airspaces are drawn with black border (otherwise in airspace color) */
   bool bAirspaceBlackOutline;
 
@@ -120,7 +120,7 @@ struct SETTINGS_MAP {
   bool EnablePan;
   GeoPoint PanLocation;
   bool TargetPan;
-  int TargetPanIndex;
+  unsigned TargetPanIndex;
   fixed TargetZoomDistance;
   fixed MapScale;
   /** Show FLARM radar if traffic present */

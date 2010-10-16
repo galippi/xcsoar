@@ -64,7 +64,7 @@ doc/html/advanced/input/ALL		http://xcsoar.sourceforge.net/advanced/input/
 #include "LogFile.hpp"
 #include "Compatibility/vk.h"
 #include "ButtonLabel.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "LocalPath.hpp"
 #include "UtilsText.hpp"
 #include "StringUtil.hpp"
@@ -76,6 +76,7 @@ doc/html/advanced/input/ALL		http://xcsoar.sourceforge.net/advanced/input/
 #include "MapWindowProjection.hpp"
 #include "InfoBoxes/InfoBoxManager.hpp"
 #include "Compatibility/string.h" /* for _ttoi() */
+#include "Language.hpp"
 
 #include <algorithm>
 #include <assert.h>
@@ -254,7 +255,7 @@ apply_defaults(const TCHAR *const* default_modes,
 
   while (default_labels->label != NULL) {
     InputEvents::makeLabel((InputEvents::mode)default_labels->mode,
-                           default_labels->label,
+                           gettext(default_labels->label),
                            default_labels->location, default_labels->event);
     ++default_labels;
   }
@@ -289,14 +290,7 @@ InputEvents::readFile()
 
   // Get defaults
   if (!InitONCE) {
-    if (!is_embedded()) {
-      #include "InputEvents_pc.cpp"
-      apply_defaults(default_modes,
-                     default_events,
-                     sizeof(default_events) / sizeof(default_events[0]),
-                     default_key2event, default_gc2event, default_n2event,
-                     default_labels);
-    } else if (is_altair()) {
+    if (is_altair()) {
       #include "InputEvents_altair.cpp"
       apply_defaults(default_modes,
                      default_events,
@@ -1047,6 +1041,12 @@ InputEvents::ResetMenuTimeOut()
 void
 InputEvents::ShowMenu()
 {
+  if (SettingsMap().EnablePan && !SettingsMap().TargetPan)
+    /* disable pan mode before displaying the normal menu; leaving pan
+       mode enabled would be confusing for the user, and doesn't look
+       consistent */
+    sub_Pan(0);
+
   #if !defined(GNAV) && !defined(PCGNAV)
   // Popup exit button if in .xci
   // setMode(_T("Exit"));

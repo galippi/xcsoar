@@ -138,7 +138,9 @@ typedef struct {
 * Local function prototypes.
 \******************************************************************************/
 
+gcc_malloc static
 jpc_ppxstab_t *jpc_ppxstab_create(void);
+
 void jpc_ppxstab_destroy(jpc_ppxstab_t *tab);
 int jpc_ppxstab_grow(jpc_ppxstab_t *tab, int maxents);
 int jpc_ppxstab_insert(jpc_ppxstab_t *tab, jpc_ppxstabent_t *ent);
@@ -147,8 +149,12 @@ int jpc_pptstabwrite(jas_stream_t *out, jpc_ppxstab_t *tab);
 jpc_ppxstabent_t *jpc_ppxstabent_create(void);
 void jpc_ppxstabent_destroy(jpc_ppxstabent_t *ent);
 
+gcc_pure static
 int jpc_streamlist_numstreams(jpc_streamlist_t *streamlist);
+
+gcc_malloc static
 jpc_streamlist_t *jpc_streamlist_create(void);
+
 int jpc_streamlist_insert(jpc_streamlist_t *streamlist, int streamno,
   jas_stream_t *stream);
 jas_stream_t *jpc_streamlist_remove(jpc_streamlist_t *streamlist, int streamno);
@@ -237,8 +243,10 @@ jas_image_t *jpc_decode(jas_stream_t *in, const char *optstr)
 {
 	jpc_dec_importopts_t opts;
 	jpc_dec_t *dec;
+#ifdef ENABLE_JASPER_IMAGE
 	jas_image_t *image = 0;
   unsigned int i;
+#endif /* ENABLE_JASPER_IMAGE */
 
 	dec = 0;
 
@@ -258,11 +266,13 @@ jas_image_t *jpc_decode(jas_stream_t *in, const char *optstr)
 	}
 
 	if (dec->xcsoar) {
-		jas_rtc_SetInitialised(true);
+		if (dec->xcsoar == 2)
+			jas_rtc_SetInitialised(true);
 		jpc_dec_destroy(dec);
 		return 0;
 	}
 
+#ifdef ENABLE_JASPER_IMAGE
   // dima: define the default for color space
 	jas_image_setclrspc(dec->image, JAS_CLRSPC_SGRAY);
   for (i=0; i<(unsigned int)jas_image_numcmpts(dec->image); ++i)
@@ -292,6 +302,7 @@ jas_image_t *jpc_decode(jas_stream_t *in, const char *optstr)
 	jpc_dec_destroy(dec);
 
 	return image;
+#endif /* ENABLE_JASPER_IMAGE */
 
 error:
 	if (dec) {
@@ -378,10 +389,6 @@ static int jpc_dec_decode(jpc_dec_t *dec)
 	jpc_dec_mstabent_t *mstabent;
 	int ret;
 	jpc_cstate_t *cstate;
-
-	if (dec->xcsoar) {
-		jas_rtc_SetInitialised(false);
-	}
 
 	if (!(cstate = jpc_cstate_create())) {
 		return -1;
@@ -478,13 +485,16 @@ static int jpc_dec_process_sot(jpc_dec_t *dec, jpc_ms_t *ms)
 {
 	jpc_dec_tile_t *tile;
 	jpc_sot_t *sot = &ms->parms.sot;
+#ifdef ENABLE_JASPER_IMAGE
 	jas_image_cmptparm_t *compinfos;
 	jas_image_cmptparm_t *compinfo;
 	jpc_dec_cmpt_t *cmpt;
 	int cmptno;
+#endif /* ENABLE_JASPER_IMAGE */
 
 	if (dec->state == JPC_MH) {
 
+#ifdef ENABLE_JASPER_IMAGE
 		compinfos = jas_malloc(dec->numcomps * sizeof(jas_image_cmptparm_t));
 		assert(compinfos);
 		for (cmptno = 0, cmpt = dec->cmpts, compinfo = compinfos;
@@ -498,6 +508,7 @@ static int jpc_dec_process_sot(jpc_dec_t *dec, jpc_ms_t *ms)
 			compinfo->hstep = cmpt->hstep;
 			compinfo->vstep = cmpt->vstep;
 		}
+#endif /* ENABLE_JASPER_IMAGE */
 
 		// JMW image created here
 
@@ -506,12 +517,14 @@ static int jpc_dec_process_sot(jpc_dec_t *dec, jpc_ms_t *ms)
 		}
 
 		// JMW don't create this image in xcsoar mode
+#ifdef ENABLE_JASPER_IMAGE
 		if (dec->xcsoar == 0 &&
 		  !(dec->image = jas_image_create(dec->numcomps, compinfos,
 		  JAS_CLRSPC_UNKNOWN))) {
 			return -1;
 		}
 		jas_free(compinfos);
+#endif /* ENABLE_JASPER_IMAGE */
 
 		/* Is the packet header information stored in PPM marker segments in
 		  the main header? */
@@ -548,14 +561,6 @@ static int jpc_dec_process_sot(jpc_dec_t *dec, jpc_ms_t *ms)
 		jas_rtc_SetTile(sot->tileno, tile->xstart,
 				tile->ystart, tile->xend,
 				tile->yend);
-
-		if (dec->xcsoar==2) {
-			tile->hidden = 0;
-		} else {
-			tile->hidden = !(jas_rtc_TileRequest(sot->tileno));
-		}
-	} else {
-		tile->hidden = 0;
 	}
 
 	/* Ensure that this is the expected part number. */
@@ -582,9 +587,7 @@ static int jpc_dec_process_sot(jpc_dec_t *dec, jpc_ms_t *ms)
 	switch (tile->state) {
 	case JPC_TILE_INIT:
 		/* This is the first tile-part for this tile. */
-		if (!tile->hidden) {
-			tile->state = JPC_TILE_ACTIVE;
-		}
+		tile->state = JPC_TILE_ACTIVE;
 		assert(!tile->cp);
 		if (!(tile->cp = jpc_dec_cp_copy(dec->cp))) {
 			return -1;
@@ -668,8 +671,7 @@ static int jpc_dec_process_sod(jpc_dec_t *dec, jpc_ms_t *ms)
 	}
 
 	// JMW hack
-	if (!tile->hidden &&
-	  jpc_dec_decodepkts(dec, (tile->pkthdrstream) ? tile->pkthdrstream :
+	if (jpc_dec_decodepkts(dec, (tile->pkthdrstream) ? tile->pkthdrstream :
 	  dec->in, dec->in)) {
 #if 0 // JMW
 		fprintf(stderr, "jpc_dec_decodepkts failed\n");
@@ -684,13 +686,11 @@ static int jpc_dec_process_sod(jpc_dec_t *dec, jpc_ms_t *ms)
 		curoff = jas_stream_getrwcount(dec->in);
 		if (curoff < dec->curtileendoff) {
 			n = dec->curtileendoff - curoff;
-			if (!tile->hidden) {
 #if 0 // JMW
 			fprintf(stderr,
 			  "warning: ignoring trailing garbage (%lu bytes)\n",
 			  (unsigned long) n);
 #endif
-			}
 
 			while (n-- > 0) {
 				if (jas_stream_getc(dec->in) == EOF) {
@@ -710,7 +710,7 @@ static int jpc_dec_process_sod(jpc_dec_t *dec, jpc_ms_t *ms)
 
 	}
 
-	if (!tile->hidden && tile->numparts > 0 && tile->partno == tile->numparts - 1) {
+	if (tile->numparts > 0 && tile->partno == tile->numparts - 1) {
 		if (jpc_dec_tiledecode(dec, tile)) {
 			return -1;
 		}
@@ -777,16 +777,6 @@ static int jpc_dec_tileinit(jpc_dec_t *dec, jpc_dec_tile_t *tile)
 	tile->realmode = 0;
 	if (cp->mctid == JPC_MCT_ICT) {
 		tile->realmode = 1;
-	}
-
-	// JMW hack
-	if (tile->hidden) {
-		if (tile->tcomps) {
-			jas_free(tile->tcomps);
-			tile->tcomps=0;
-		}
-		tile->pi = 0;
-		return 0;
 	}
 
 	for (compno = 0, tcomp = tile->tcomps, cmpt = dec->cmpts; compno <
@@ -1135,8 +1125,6 @@ static int jpc_dec_tiledecode(jpc_dec_t *dec, jpc_dec_tile_t *tile)
 	short* dptr;
 	int ilevel = 0;
 
-	if (tile->hidden) return 0;
-
 	if (jpc_dec_decodecblks(dec, tile)) {
 #if 0 // JMW
 		fprintf(stderr, "jpc_dec_decodecblks failed\n");
@@ -1251,8 +1239,6 @@ static int jpc_dec_tiledecode(jpc_dec_t *dec, jpc_dec_tile_t *tile)
 			iw = dec->cmpts->width/16;
 			ih = dec->cmpts->height/16;
 			if (dptr) {
-				jas_rtc_set_num_tiles(dec->numtiles);
-				jas_rtc_stepprogress();
 				for (i = 0; i < jas_matrix_numrows(tcomp->data); i+= 16) {
 					for (j = 0; j < jas_matrix_numcols(tcomp->data); j+= 16) {
 						short d = jas_matrix_get(tcomp->data, i, j);
@@ -1269,8 +1255,6 @@ static int jpc_dec_tiledecode(jpc_dec_t *dec, jpc_dec_tile_t *tile)
 			// JMW put data into image buffer
 			dptr = jas_rtc_GetImageBuffer(tile->cache_index);
 			if (dptr) {
-				jas_rtc_set_num_tiles(dec->numtiles);
-				jas_rtc_stepprogress();
 				for (i = 0; i < jas_matrix_numrows(tcomp->data); ++i) {
 					for (j = 0; j < jas_matrix_numcols(tcomp->data); ++j) {
 						short d = jas_matrix_get(tcomp->data, i, j);
@@ -1279,6 +1263,7 @@ static int jpc_dec_tiledecode(jpc_dec_t *dec, jpc_dec_tile_t *tile)
 				}
 			}
 			break;
+#ifdef ENABLE_JASPER_IMAGE
 		default:
 		case 0:
 			if (jas_image_writecmpt(dec->image, compno,
@@ -1291,6 +1276,7 @@ static int jpc_dec_tiledecode(jpc_dec_t *dec, jpc_dec_tile_t *tile)
 #endif
 				return -4;
 			}
+#endif /* ENABLE_JASPER_IMAGE */
 		}
 	}
 
@@ -1392,6 +1378,7 @@ static int jpc_dec_process_siz(jpc_dec_t *dec, jpc_ms_t *ms)
 		tile->pkthdrstreampos = 0;
 		tile->pptstab = 0;
 		tile->cp = 0;
+		tile->pi = NULL;
 
 		// JMW, memory leak?
 		if (!(tile->tcomps = jas_malloc(dec->numcomps *
@@ -1401,6 +1388,7 @@ static int jpc_dec_process_siz(jpc_dec_t *dec, jpc_ms_t *ms)
 		for (compno = 0, cmpt = dec->cmpts, tcomp = tile->tcomps;
 		  compno < dec->numcomps; ++compno, ++cmpt, ++tcomp) {
 			tcomp->rlvls = 0;
+			tcomp->numrlvls = 0;
 			tcomp->data = 0;
 			tcomp->xstart = JPC_CEILDIV(tile->xstart, cmpt->hstep);
 			tcomp->ystart = JPC_CEILDIV(tile->ystart, cmpt->vstep);
@@ -1632,7 +1620,7 @@ static int jpc_dec_process_com(jpc_dec_t *dec, jpc_ms_t *ms)
 	char* cptr;
 
 	// JMW
-	if (dec->xcsoar) {
+	if (dec->xcsoar == 2) {
 		char sTmp[128];
 		jpc_com_t *com = &ms->parms.com;
 
@@ -1643,11 +1631,8 @@ static int jpc_dec_process_com(jpc_dec_t *dec, jpc_ms_t *ms)
 			if (cptr) {
 				sscanf(cptr+6, "%f %f %f %f", &lon_min, &lon_max, &lat_min, &lat_max);
 				jas_rtc_SetLatLonBounds(lon_min, lon_max, lat_min, lat_max);
-				return 0;
 			}
 		}
-		// Error! XCSoar header text not found
-		return -1;
 	}
 
 	return 0;
@@ -2086,9 +2071,11 @@ static void jpc_dec_destroy(jpc_dec_t *dec)
 	if (dec->pkthdrstreams) {
 		jpc_streamlist_destroy(dec->pkthdrstreams);
 	}
+#ifdef ENABLE_JASPER_IMAGE
 	if (dec->image) {
 		jas_image_destroy(dec->image);
 	}
+#endif /* ENABLE_JASPER_IMAGE */
 
 	if (dec->cp) {
 		jpc_dec_cp_destroy(dec->cp);

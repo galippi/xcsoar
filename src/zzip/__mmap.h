@@ -11,15 +11,15 @@
  *
  * Copyright (c) 2002,2003 Guido Draheim
  *          All rights reserved,
- *          use under the restrictions of the
+ *          use under the restrictions of the 
  *          Lesser GNU General Public License
- *          or alternatively the restrictions
+ *          or alternatively the restrictions 
  *          of the Mozilla Public License 1.1
  */
 
 #ifdef _USE_MMAP
 #if    defined ZZIP_HAVE_SYS_MMAN_H
-//JMW#include <sys/mman.h>
+#include <sys/mman.h>
 #define USE_POSIX_MMAP 1
 #elif defined ZZIP_HAVE_WINBASE_H || defined WIN32
 #include <windows.h>
@@ -53,9 +53,9 @@
                  /* which assumes (sizeof(long) == sizeof(HANDLE)) */
 
 static size_t win32_getpagesize (void)
-{
-    SYSTEM_INFO si; GetSystemInfo (&si);
-    return si.dwAllocationGranularity;
+{ 
+    SYSTEM_INFO si; GetSystemInfo (&si); 
+    return si.dwAllocationGranularity; 
 }
 static void*  win32_mmap (long* user, int fd, zzip_off_t offs, size_t len)
 {
@@ -71,7 +71,7 @@ static void*  win32_mmap (long* user, int fd, zzip_off_t offs, size_t len)
 	p = MapViewOfFile(*(HANDLE*)user, FILE_MAP_READ, 0, offs, len);
 	if (p) return p + offs;
 	CloseHandle (*(HANDLE*)user); *user = 1;
-    }
+    } 
     return MAP_FAILED;
   }
 }

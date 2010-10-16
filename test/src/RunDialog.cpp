@@ -41,7 +41,6 @@ Copyright_License {
 #include "Screen/Layout.hpp"
 #include "Screen/Fonts.hpp"
 #include "ResourceLoader.hpp"
-#include "InputEvents.h"
 #include "MapWindow.hpp"
 #include "StatusMessage.hpp"
 #include "Asset.hpp"
@@ -64,8 +63,8 @@ GetPrimaryDataPath()
   return _T("");
 }
 
-pt2Event
-InputEvents::findEvent(const TCHAR *)
+const TCHAR *
+GetHomeDataPath(TCHAR *buffer)
 {
   return NULL;
 }

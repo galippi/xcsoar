@@ -41,6 +41,7 @@ Copyright_License {
 #include "Components.hpp"
 #include "Replay/Replay.hpp"
 #include "DataField/FileReader.hpp"
+#include "DataField/Float.hpp"
 #include "MainWindow.hpp"
 
 static WndForm *wf = NULL;
@@ -77,17 +78,13 @@ static void
 OnRateData(DataField *Sender, DataField::DataAccessKind_t Mode)
 {
   switch (Mode) {
-  case DataField::daGet:
-    Sender->Set(replay.GetTimeScale());
-    break;
-  case DataField::daPut:
   case DataField::daChange:
     replay.SetTimeScale(Sender->GetAsFixed());
     break;
   }
 }
 
-static CallBackTableEntry_t CallBackTable[] = {
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnStopClicked),
   DeclareCallBackEntry(OnStartClicked),
   DeclareCallBackEntry(OnRateData),

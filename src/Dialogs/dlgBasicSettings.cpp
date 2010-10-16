@@ -66,7 +66,7 @@ SetButtons()
   if ((wb = (WndButton *)wf->FindByName(_T("cmdDump"))) != NULL) {
     wb->set_visible(glide_polar->is_ballastable());
     wb->SetCaption(XCSoarInterface::SettingsComputer().BallastTimerActive ?
-        _T("Stop") : _T("Dump"));
+        _("Stop") : _("Dump"));
   }
 }
 
@@ -89,15 +89,12 @@ OnBallastDump(WindowControl *Sender)
 }
 
 static void
-OnQnhData(DataField *Sender, DataField::DataAccessKind_t Mode)
+OnQnhData(DataField *_Sender, DataField::DataAccessKind_t Mode)
 {
+  DataFieldFloat *Sender = (DataFieldFloat *)_Sender;
   WndProperty* wp;
 
   switch (Mode) {
-  case DataField::daGet:
-    Sender->Set(XCSoarInterface::Basic().pressure.get_QNH());
-    break;
-  case DataField::daPut:
   case DataField::daChange:
     device_blackboard.SetQNH(Sender->GetAsFixed());
     wp = (WndProperty*)wf->FindByName(_T("prpAltitude"));
@@ -106,21 +103,6 @@ OnQnhData(DataField *Sender, DataField::DataAccessKind_t Mode)
           XCSoarInterface::Basic().BaroAltitude, Units::AltitudeUnit));
       wp->RefreshDisplay();
     }
-    break;
-  }
-}
-
-static void
-OnAltitudeData(DataField *Sender, DataField::DataAccessKind_t Mode)
-{
-  switch (Mode) {
-  case DataField::daGet:
-    Sender->Set(Units::ToUserUnit(XCSoarInterface::Basic().BaroAltitude,
-                                  Units::AltitudeUnit));
-    break;
-  case DataField::daPut:
-    break;
-  case DataField::daChange:
     break;
   }
 }
@@ -185,22 +167,18 @@ SetBallast(void)
  * current altitude and ballast. The ballast can change without user
  * input due to the dump function.
  */
-static int
+static void
 OnTimerNotify(WindowControl * Sender)
 {
   (void)Sender;
 
   SetBallast();
   SetAltitude();
-
-  return 0;
 }
 
 static void
 OnBallastData(DataField *Sender, DataField::DataAccessKind_t Mode)
 {
-  static fixed lastRead = fixed_minus_one;
-
   switch (Mode) {
   case DataField::daSpecial:
     if (glide_polar->get_ballast() > fixed(0.01))
@@ -211,67 +189,43 @@ OnBallastData(DataField *Sender, DataField::DataAccessKind_t Mode)
 
     SetButtons();
     break;
-  case DataField::daGet:
-    lastRead = glide_polar->get_ballast();
-    Sender->SetAsFloat(glide_polar->get_ballast() * 100);
-    break;
   case DataField::daChange:
-  case DataField::daPut:
-    if (fabs(lastRead - Sender->GetAsFixed() / 100) >= fixed(0.005)) {
-      lastRead = Sender->GetAsFixed() / 100;
-      glide_polar->set_ballast(fixed(lastRead));
-      changed = true;
-      SetBallast();
-    }
+    glide_polar->set_ballast(Sender->GetAsFixed() / 100);
+    changed = true;
+    SetBallast();
     break;
   }
 }
 
 static void
-OnBugsData(DataField *Sender, DataField::DataAccessKind_t Mode)
+OnBugsData(DataField *_Sender, DataField::DataAccessKind_t Mode)
 {
-  static fixed lastRead = fixed_minus_one;
+  DataFieldFloat *Sender = (DataFieldFloat *)_Sender;
 
   switch (Mode) {
-  case DataField::daGet:
-    lastRead = glide_polar->get_bugs();
-    Sender->Set(lastRead * 100);
-    break;
   case DataField::daChange:
-  case DataField::daPut:
-    if (fabs(lastRead - Sender->GetAsFixed() / 100) >= fixed_one / 200) {
-      lastRead = Sender->GetAsFixed() / 100;
-      glide_polar->set_bugs(lastRead);
-      changed = true;
-    }
+    glide_polar->set_bugs(Sender->GetAsFixed() / 100);
+    changed = true;
     break;
   }
 }
 
 static void
-OnTempData(DataField *Sender, DataField::DataAccessKind_t Mode)
+OnTempData(DataField *_Sender, DataField::DataAccessKind_t Mode)
 {
-  static fixed lastRead = fixed_minus_one;
+  DataFieldFloat *Sender = (DataFieldFloat *)_Sender;
   switch (Mode) {
-  case DataField::daGet:
-    lastRead = fixed(CuSonde::maxGroundTemperature);
-    Sender->Set(Units::ToUserTemperature(lastRead));
-    break;
   case DataField::daChange:
-  case DataField::daPut:
-    if (fabs(lastRead - Sender->GetAsFixed()) >= fixed_one) {
-      lastRead = Units::ToSysTemperature(Sender->GetAsFixed());
-      CuSonde::setForecastTemperature(Units::ToSysTemperature(Sender->GetAsFixed()));
-    }
+    CuSonde::setForecastTemperature(Units::ToUserUnit(Units::ToSysTemperature(Sender->GetAsFixed()),
+                                                      unGradCelcius));
     break;
   }
 }
 
-static CallBackTableEntry_t CallBackTable[] = {
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnBugsData),
   DeclareCallBackEntry(OnTempData),
   DeclareCallBackEntry(OnBallastData),
-  DeclareCallBackEntry(OnAltitudeData),
   DeclareCallBackEntry(OnQnhData),
   DeclareCallBackEntry(OnCloseClicked),
   DeclareCallBackEntry(OnBallastDump),
@@ -296,13 +250,19 @@ dlgBasicSettingsShowModal()
 
   SetButtons();
 
+  LoadFormProperty(*wf, _T("prpBugs"), glide_polar->get_bugs() * 100);
+  LoadFormProperty(*wf, _T("prpQNH"),
+                   XCSoarInterface::Basic().pressure.get_QNH());
+
   WndProperty* wp;
   wp = (WndProperty*)wf->FindByName(_T("prpTemperature"));
   if (wp) {
     DataFieldFloat &df = *(DataFieldFloat *)wp->GetDataField();
-    df.SetMin(Units::ToUserTemperature(fixed(-50)));
-    df.SetMax(Units::ToUserTemperature(fixed(60)));
+    df.SetMin(Units::ToUserTemperature(Units::ToSysUnit(fixed(-50), unGradCelcius)));
+    df.SetMax(Units::ToUserTemperature(Units::ToSysUnit(fixed(60), unGradCelcius)));
     df.SetUnits(Units::GetTemperatureName());
+    df.Set(Units::ToUserTemperature(Units::ToSysUnit(fixed(CuSonde::maxGroundTemperature),
+                                                     unGradCelcius)));
     wp->RefreshDisplay();
   }
   wp = (WndProperty*)wf->FindByName(_T("prpAltitude"));

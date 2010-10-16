@@ -166,8 +166,9 @@ DataFieldInteger::SpeedUp(bool keyup)
   return res;
 }
 
-unsigned
-DataFieldInteger::CreateComboList(void)
+ComboList *
+DataFieldInteger::CreateComboList() const
 {
-  return CreateComboListStepping();
+  DataFieldInteger clone(*this);
+  return clone.CreateComboListStepping();
 }

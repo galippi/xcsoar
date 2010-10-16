@@ -41,9 +41,10 @@ Copyright_License {
 #include "Engine/Task/Factory/AbstractTaskFactory.hpp"
 #include "Protection.hpp"
 #include "Math/Earth.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "LocalTime.hpp"
 #include "UtilsText.hpp"
+#include "OS/PathName.hpp"
 #include "Math/SunEphemeris.hpp"
 #include "Blackboard.hpp"
 #include "SettingsComputer.hpp"
@@ -88,7 +89,6 @@ static Bitmap jpgimage1, jpgimage2;
 static TCHAR path_modis[MAX_PATH];
 static TCHAR path_google[MAX_PATH];
 static TCHAR szWaypointFile[MAX_PATH];
-static TCHAR Directory[MAX_PATH];
 
 #define MAXLINES 100
 static int LineOffsets[MAXLINES];
@@ -523,7 +523,7 @@ OnImagePaint(WindowControl *Sender, Canvas &canvas)
   }
 }
 
-static CallBackTableEntry_t CallBackTable[] = {
+static CallBackTableEntry CallBackTable[] = {
     DeclareCallBackEntry(OnNextClicked),
     DeclareCallBackEntry(OnPrevClicked),
     DeclareCallBackEntry(NULL)
@@ -535,25 +535,25 @@ dlgWayPointDetailsShowModal(SingleWindow &parent, const Waypoint& way_point)
   selected_waypoint = &way_point;
 
   TCHAR sTmp[128];
-  double sunsettime;
   int sunsethours;
   int sunsetmins;
   WndProperty *wp;
 
-  if (Layout::landscape)
-    wf = LoadDialog(CallBackTable,
-                        parent, _T("IDR_XML_WAYPOINTDETAILS_L"));
-  else
-    wf = LoadDialog(CallBackTable,
-                        parent, _T("IDR_XML_WAYPOINTDETAILS"));
-
-  nTextLines = 0;
+  wf = LoadDialog(CallBackTable, parent,
+                  Layout::landscape ? _T("IDR_XML_WAYPOINTDETAILS_L") :
+                                      _T("IDR_XML_WAYPOINTDETAILS"));
 
   if (!wf)
     return;
 
-  Profile::GetPath(szProfileWayPointFile, szWaypointFile);
-  ExtractDirectory(Directory, szWaypointFile);
+  nTextLines = 0;
+
+  TCHAR buffer[MAX_PATH];
+  const TCHAR *Directory = NULL;
+  if (Profile::GetPath(szProfileWayPointFile, szWaypointFile))
+    Directory = DirName(szWaypointFile, buffer);
+  if (Directory == NULL)
+    Directory = _T("");
 
   _stprintf(path_modis, _T("%s" DIR_SEPARATOR_S "modis-%03d.jpg"),
            Directory,
@@ -581,13 +581,12 @@ dlgWayPointDetailsShowModal(SingleWindow &parent, const Waypoint& way_point)
     ->SetText(sTmp);
 
   SunEphemeris sun;
-  sunsettime = sun.CalcSunTimes
-    (selected_waypoint->Location,
-     XCSoarInterface::Basic().DateTime,
-     GetUTCOffset()/3600);
+  sun.CalcSunTimes(selected_waypoint->Location,
+                   XCSoarInterface::Basic().DateTime,
+                   fixed(GetUTCOffset()) / 3600);
 
-  sunsethours = (int)sunsettime;
-  sunsetmins = (int)((sunsettime - sunsethours) * 60);
+  sunsethours = (int)sun.TimeOfSunSet;
+  sunsetmins = (int)((sun.TimeOfSunSet - fixed(sunsethours)) * 60);
 
   _stprintf(sTmp, _T("%02d:%02d"), sunsethours, sunsetmins);
   ((WndProperty *)wf->FindByName(_T("prpSunset")))->SetText(sTmp);

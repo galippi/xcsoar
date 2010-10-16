@@ -39,6 +39,7 @@ Copyright_License {
 #ifndef XCSOAR_COMPONENTS_HPP
 #define XCSOAR_COMPONENTS_HPP
 
+class FileCache;
 class Marks;
 class TopologyStore;
 class RasterTerrain;
@@ -53,8 +54,10 @@ class ProtectedAirspaceWarningManager;
 class ProtectedTaskManager;
 class TaskBehaviour;
 class Replay;
+class AltairControl;
 
 // other global objects
+extern FileCache *file_cache;
 extern Airspaces airspace_database;
 extern ProtectedAirspaceWarningManager airspace_warnings;
 extern Waypoints way_points;
@@ -68,5 +71,9 @@ extern GlideComputer glide_computer;
 extern DrawThread *draw_thread;
 extern CalculationThread *calculation_thread;
 extern InstrumentThread *instrument_thread;
+
+#ifdef GNAV
+extern AltairControl altair_control;
+#endif
 
 #endif

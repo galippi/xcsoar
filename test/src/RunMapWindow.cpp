@@ -50,11 +50,12 @@ Copyright_License {
 #include "Terrain/RasterWeather.hpp"
 #include "Terrain/RasterTerrain.hpp"
 #include "UtilsSystem.hpp"
-#include "ProfileKeys.hpp"
+#include "Profile/ProfileKeys.hpp"
 #include "LocalTime.hpp"
 #include "WayPointGlue.hpp"
 #include "Device/device.hpp"
 #include "Topology/TopologyStore.hpp"
+#include "Topology/TopologyGlue.hpp"
 #include "Dialogs.h"
 #include "Gauge/GaugeCDI.hpp"
 #include "Logger/LoggerImpl.hpp"
@@ -62,7 +63,7 @@ Copyright_License {
 #include "ButtonLabel.hpp"
 #include "DeviceBlackboard.hpp"
 #include "Airspace/AirspaceParser.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "Engine/Waypoint/Waypoints.hpp"
 #include "Engine/Airspace/Airspaces.hpp"
 #include "Engine/Task/TaskManager.hpp"
@@ -177,6 +178,7 @@ public:
     map.set_terrain(terrain);
 
     close_button.set(*this, _T("Close"), ID_CLOSE, 5, 5, 65, 25);
+    close_button.set_font(Fonts::Map);
     close_button.bring_to_top();
   }
 
@@ -209,8 +211,9 @@ static void
 LoadFiles()
 {
   topology = new TopologyStore();
+  LoadConfiguredTopology(*topology);
 
-  terrain = RasterTerrain::OpenTerrain();
+  terrain = RasterTerrain::OpenTerrain(NULL);
 
   WayPointGlue::ReadWaypoints(way_points, terrain);
 
@@ -294,14 +297,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   MapWindow::register_class(hInstance);
 #endif
 
-  Fonts::Initialize(false);
-
-  MapGfx.Initialise();
-  MapGfx.InitialiseConfigured(blackboard.SettingsMap());
+  Graphics::Initialise();
+  Graphics::InitialiseConfigured(blackboard.SettingsMap());
 
   TestWindow window;
   GenerateBlackboard(window.map);
   window.set(0, 0, 640, 480);
+  Fonts::Initialize();
   DrawThread::Draw(window.map);
   window.show();
 

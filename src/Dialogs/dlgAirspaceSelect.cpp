@@ -43,7 +43,7 @@ Copyright_License {
 #include "Math/FastMath.h"
 #include "Math/Earth.hpp"
 #include "MainWindow.hpp"
-#include "DataField/Base.hpp"
+#include "DataField/String.hpp"
 #include "MapWindow.hpp"
 #include "Components.hpp"
 #include "Engine/Airspace/Airspaces.hpp"
@@ -157,32 +157,32 @@ static void FilterMode(bool direction) {
     DistanceFilterIdx=0;
     DirectionFilterIdx=0;
     if (wpDistance) {
-      wpDistance->GetDataField()->Set(_T("*"));
+      DataFieldString *df = (DataFieldString *)wpDistance->GetDataField();
+      df->Set(_T("*"));
       wpDistance->RefreshDisplay();
     }
     if (wpDirection) {
-      wpDirection->GetDataField()->Set(_T("*"));
+      DataFieldString *df = (DataFieldString *)wpDirection->GetDataField();
+      df->Set(_T("*"));
       wpDirection->RefreshDisplay();
     }
   } else {
     NameFilterIdx=0;
     if (wpName) {
-      wpName->GetDataField()->Set(_T("**"));
+      DataFieldString *df = (DataFieldString *)wpName->GetDataField();
+      df->Set(_T("**"));
       wpName->RefreshDisplay();
     }
   }
 }
 
 
-static void OnFilterName(DataField *Sender, DataField::DataAccessKind_t Mode){
+static void OnFilterName(DataField *_Sender, DataField::DataAccessKind_t Mode){
+  DataFieldString *Sender = (DataFieldString *)_Sender;
 
   TCHAR sTmp[12];
 
   switch(Mode){
-    case DataField::daGet:
-    break;
-    case DataField::daPut:
-    break;
     case DataField::daChange:
     break;
     case DataField::daInc:
@@ -208,17 +208,12 @@ static void OnFilterName(DataField *Sender, DataField::DataAccessKind_t Mode){
 
 
 
-static void OnFilterDistance(DataField *Sender,
+static void OnFilterDistance(DataField *_Sender,
                              DataField::DataAccessKind_t Mode) {
-
+  DataFieldString *Sender = (DataFieldString *)_Sender;
   TCHAR sTmp[12];
 
   switch(Mode){
-    case DataField::daGet:
-      Sender->Set(_T("25"));
-    break;
-    case DataField::daPut:
-    break;
     case DataField::daChange:
     break;
     case DataField::daInc:
@@ -248,12 +243,12 @@ static void OnFilterDistance(DataField *Sender,
 }
 
 
-static void SetDirectionData(DataField *Sender){
+static void SetDirectionData(DataFieldString *Sender){
 
   TCHAR sTmp[12];
 
   if (Sender == NULL){
-    Sender = wpDirection->GetDataField();
+    Sender = (DataFieldString *)wpDirection->GetDataField();
   }
 
   if (DirectionFilterIdx == 0)
@@ -270,15 +265,11 @@ static void SetDirectionData(DataField *Sender){
 
 }
 
-static void OnFilterDirection(DataField *Sender,
+static void OnFilterDirection(DataField *_Sender,
                               DataField::DataAccessKind_t Mode){
+  DataFieldString *Sender = (DataFieldString *)_Sender;
 
   switch(Mode){
-    case DataField::daGet:
-      Sender->Set(_T("*"));
-    break;
-    case DataField::daPut:
-    break;
     case DataField::daChange:
     break;
     case DataField::daInc:
@@ -302,14 +293,11 @@ static void OnFilterDirection(DataField *Sender,
 
 }
 
-static void OnFilterType(DataField *Sender,
+static void OnFilterType(DataField *_Sender,
                          DataField::DataAccessKind_t Mode) {
+  DataFieldString *Sender = (DataFieldString *)_Sender;
+
   switch(Mode){
-    case DataField::daGet:
-      Sender->Set(_T("*"));
-    break;
-    case DataField::daPut:
-    break;
     case DataField::daChange:
     break;
     case DataField::daInc:
@@ -386,7 +374,9 @@ OnWPSCloseClicked(gcc_unused WndButton &button)
   wf->SetModalResult(mrCancel);
 }
 
-static int OnTimerNotify(WindowControl * Sender) {
+static void
+OnTimerNotify(WindowControl * Sender)
+{
   (void)Sender;
   if (DirectionFilterIdx == 1){
     int a;
@@ -397,7 +387,6 @@ static int OnTimerNotify(WindowControl * Sender) {
       wpDirection->RefreshDisplay();
     }
   }
-  return 0;
 }
 
 static bool
@@ -434,7 +423,7 @@ FormKeyDown(WindowControl *Sender, unsigned key_code){
   return true;
 }
 
-static CallBackTableEntry_t CallBackTable[]={
+static CallBackTableEntry CallBackTable[]={
   DeclareCallBackEntry(OnFilterName),
   DeclareCallBackEntry(OnFilterDistance),
   DeclareCallBackEntry(OnFilterDirection),

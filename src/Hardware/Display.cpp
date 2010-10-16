@@ -120,17 +120,103 @@ Display::SetBacklight()
 }
 #endif
 
+#if defined(DM_DISPLAYORIENTATION) && defined(_WIN32_WCE) && _WIN32_WCE >= 0x400
+/* on PPC2000, ChangeDisplaySettingsEx() crashes silently */
+#define ROTATE_SUPPORTED
+#endif
+
 bool
-Display::Rotate()
+Display::RotateSupported()
 {
-#ifdef DM_DISPLAYORIENTATION
+#ifdef ROTATE_SUPPORTED
+  if (GetSystemMetrics(SM_CXSCREEN) == GetSystemMetrics(SM_CYSCREEN))
+    /* cannot rotate a square display */
+    return false;
+
+  DEVMODE dm;
+  memset(&dm, 0, sizeof(dm));
+  dm.dmSize = sizeof(dm);
+  dm.dmFields = DM_DISPLAYQUERYORIENTATION;
+
+  return ChangeDisplaySettingsEx(NULL, &dm, NULL,
+                                 CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL;
+#else
+  return false;
+#endif
+}
+
+bool
+Display::Rotate(enum orientation orientation)
+{
+  if (orientation == ORIENTATION_DEFAULT)
+    /* leave it as it is */
+    return true;
+
+#ifdef ROTATE_SUPPORTED
+  unsigned width = GetSystemMetrics(SM_CXSCREEN);
+  unsigned height = GetSystemMetrics(SM_CYSCREEN);
+  if (width == height)
+    /* cannot rotate a square display */
+    return false;
+
+  if (width < height) {
+    /* portrait currently */
+    if (orientation == ORIENTATION_PORTRAIT)
+      return true;
+  } else {
+    /* landscape currently */
+    if (orientation == ORIENTATION_LANDSCAPE)
+      return true;
+  }
+
   DEVMODE DeviceMode;
   memset(&DeviceMode, 0, sizeof(DeviceMode));
   DeviceMode.dmSize = sizeof(DeviceMode);
   DeviceMode.dmFields = DM_DISPLAYORIENTATION;
-  DeviceMode.dmDisplayOrientation = DMDO_90;
+
+  /* get current rotation */
+
+  if (ChangeDisplaySettingsEx(NULL, &DeviceMode, NULL,
+                              CDS_TEST, NULL) != DISP_CHANGE_SUCCESSFUL)
+    return false;
+
+  /* determine the new rotation */
+
+  switch (DeviceMode.dmDisplayOrientation) {
+  case DMDO_0:
+  case DMDO_180:
+    DeviceMode.dmDisplayOrientation = DMDO_90;
+    break;
+
+  case DMDO_90:
+  case DMDO_270:
+    DeviceMode.dmDisplayOrientation = DMDO_0;
+    break;
+
+  default:
+    return false;
+  }
+
+  /* apply the new rotation */
 
   return ChangeDisplaySettingsEx(NULL, &DeviceMode, NULL,
+                                 CDS_RESET, NULL) == DISP_CHANGE_SUCCESSFUL;
+#else
+  return false;
+#endif
+}
+
+bool
+Display::RotateRestore()
+{
+#ifdef ROTATE_SUPPORTED
+  DEVMODE dm;
+  memset(&dm, 0, sizeof(dm));
+  dm.dmSize = sizeof(dm);
+  dm.dmFields = DM_DISPLAYORIENTATION;
+  dm.dmDisplayOrientation = DMDO_0;
+
+  return ChangeDisplaySettingsEx(NULL, &dm, NULL,
                                  CDS_RESET, NULL) == DISP_CHANGE_SUCCESSFUL;
 #else
   return false;

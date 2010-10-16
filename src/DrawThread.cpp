@@ -58,7 +58,7 @@ DrawThread::ExchangeBlackboard()
 
   /* return MapWindow projection to the device_blackboard */
   mutexBlackboard.Lock();
-  device_blackboard.ReadMapProjection(map.MapProjection());
+  device_blackboard.ReadMapProjection(map.VisibleProjection());
   mutexBlackboard.Unlock();
 }
 
@@ -102,7 +102,7 @@ DrawThread::run()
       running.wait();
 
       /* got the "stop" trigger? */
-      if (stop_trigger.test())
+      if (is_stopped())
         break;
 
       // Get data from the DeviceBlackboard
@@ -132,7 +132,7 @@ DrawThread::run()
       running.wait();
 
       /* got the "stop" trigger? */
-      if (stop_trigger.test())
+      if (is_stopped())
         break;
 
       bounds_dirty = map.Idle();

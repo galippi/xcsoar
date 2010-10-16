@@ -40,18 +40,8 @@ Copyright_License {
 #define XCSOAR_DATA_FIELD_FILE_READER_HPP
 
 #include "DataField/Base.hpp"
-
-/** Maximum of files in the list */
-#define DFE_MAX_FILES 100
-
-/** FileList item */
-typedef struct
-{
-  /** Filename */
-  TCHAR *mTextFile;
-  /** Path including Filename */
-  TCHAR *mTextPathFile;
-} DataFieldFileReaderEntry;
+#include "Util/NonCopyable.hpp"
+#include "Util/StaticArray.hpp"
 
 /**
  * #DataField specialisation that supplies options as a list of
@@ -60,13 +50,23 @@ typedef struct
  */
 class DataFieldFileReader: public DataField
 {
+public:
+  /** FileList item */
+  struct Item : private NonCopyable {
+    /** Filename */
+    const TCHAR *mTextFile;
+    /** Path including Filename */
+    TCHAR *mTextPathFile;
+
+    Item():mTextFile(NULL), mTextPathFile(NULL) {}
+    ~Item();
+  };
+
 private:
-  /** Number of files to choose from */
-  unsigned int nFiles;
   /** Index of the active file */
   unsigned int mValue;
   /** FileList item array */
-  DataFieldFileReaderEntry fields[DFE_MAX_FILES];
+  StaticArray<Item, 100> files;
 
   /**
    * Has the file list already been loaded?  This class tries to
@@ -95,15 +95,9 @@ private:
 public:
   /**
    * Constructor of the DataFieldFileReader class
-   * @param EditFormat
-   * @param DisplayFormat
    * @param OnDataAccess
    */
-  DataFieldFileReader(const TCHAR *EditFormat, const TCHAR *DisplayFormat,
-                      DataAccessCallback_t OnDataAccess);
-
-  /** Deconstructor */
-  virtual ~DataFieldFileReader();
+  DataFieldFileReader(DataAccessCallback_t OnDataAccess);
 
   /** Move the selection up (+1) */
   void Inc(void);
@@ -113,7 +107,7 @@ public:
    * Prepares the ComboList items
    * @return The number of items in the ComboList
    */
-  virtual unsigned CreateComboList();
+  virtual ComboList *CreateComboList() const;
 
   /**
    * Adds a filename/filepath couple to the filelist
@@ -150,6 +144,12 @@ public:
   /**
    * Returns the selection title (filename)
    * @return The selection title (filename)
+   */
+  virtual const TCHAR *GetAsDisplayString() const;
+
+  /**
+   * Returns the PathFile of the currently selected item
+   * @return The PathFile of the currently selected item
    */
   virtual const TCHAR *GetAsString(void) const;
 
@@ -193,7 +193,7 @@ public:
 
   /** For use by other classes */
   unsigned size() const;
-  const DataFieldFileReaderEntry& getItem(unsigned index) const;
+  const TCHAR *getItem(unsigned index) const;
 
  protected:
   bool ScanFiles(const TCHAR *pattern, const TCHAR *filter);

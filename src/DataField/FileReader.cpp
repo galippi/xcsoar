@@ -37,10 +37,12 @@ Copyright_License {
 */
 
 #include "DataField/FileReader.hpp"
+#include "DataField/ComboList.hpp"
 #include "LocalPath.hpp"
 #include "StringUtil.hpp"
 #include "Compatibility/string.h"
 #include "Compatibility/path.h"
+#include "OS/PathName.hpp"
 
 #if defined(_WIN32_WCE) && !defined(GNAV)
 #include "OS/FlashCardEnumerator.hpp"
@@ -57,6 +59,11 @@ Copyright_License {
 #include <unistd.h>
 #include <fnmatch.h>
 #endif
+
+DataFieldFileReader::Item::~Item()
+{
+  free(mTextPathFile);
+}
 
 /**
  * Checks whether the given string str equals "." or ".."
@@ -85,6 +92,7 @@ IsInternalFile(const TCHAR* str)
     _T("xcsoar-marks.txt"),
     _T("xcsoar-persist.log"),
     _T("xcsoar-startup.log"),
+    _T("xcsoar-rasp.dat"),
     NULL
   };
 
@@ -95,36 +103,19 @@ IsInternalFile(const TCHAR* str)
   return false;
 }
 
-DataFieldFileReader::DataFieldFileReader(const TCHAR *EditFormat,
-                                         const TCHAR *DisplayFormat,
-                                         DataAccessCallback_t OnDataAccess)
-  :DataField(EditFormat, DisplayFormat, OnDataAccess),
-   // Number of choosable files is now 1
-   nFiles(1),
+DataFieldFileReader::DataFieldFileReader(DataAccessCallback_t OnDataAccess)
+  :DataField(_T(""), _T(""), OnDataAccess),
    // Set selection to zero
    mValue(0),
    loaded(false), postponed_sort(false), num_postponed_patterns(0)
 {
   // Fill first entry -> always exists and is blank
-  fields[0].mTextFile = NULL;
-  fields[0].mTextPathFile = NULL;
+  files.append();
 
   postponed_value[0] = _T('\0');
 
   // This type of DataField supports the combolist
   SupportCombo = true;
-  (mOnDataAccess)(this, daGet);
-}
-
-/** Deconstructor */
-DataFieldFileReader::~DataFieldFileReader()
-{
-  // Iterate through the file array and delete
-  // everything except the first entry
-  for (unsigned int i = 1; i < nFiles; i++) {
-    free(fields[i].mTextFile);
-    free(fields[i].mTextPathFile);
-  }
 }
 
 bool
@@ -164,6 +155,13 @@ DataFieldFileReader::ScanDirectoryTop(const TCHAR* filter)
 
   const TCHAR *data_path = GetPrimaryDataPath();
   ScanDirectories(data_path, filter);
+
+  {
+    TCHAR buffer[MAX_PATH];
+    const TCHAR *home_path = GetHomeDataPath(buffer);
+    if (home_path != NULL && _tcscmp(data_path, home_path) != 0)
+      ScanDirectories(home_path, filter);
+  }
 
 #if defined(_WIN32_WCE) && !defined(GNAV)
   TCHAR FlashPath[MAX_PATH];
@@ -380,12 +378,11 @@ DataFieldFileReader::Lookup(const TCHAR *Text)
       EnsureLoaded();
   }
 
-  int i = 0;
   mValue = 0;
   // Iterate through the filelist
-  for (i = 1; i < (int)nFiles; i++) {
+  for (unsigned i = 1; i < files.size(); i++) {
     // If Text == pathfile
-    if (_tcscmp(Text, fields[i].mTextPathFile) == 0) {
+    if (_tcscmp(Text, files[i].mTextPathFile) == 0) {
       // -> set selection to current element
       mValue = i;
     }
@@ -397,7 +394,7 @@ DataFieldFileReader::GetNumFiles(void) const
 {
   EnsureLoadedDeconst();
 
-  return nFiles;
+  return files.size();
 }
 
 const TCHAR *
@@ -406,9 +403,9 @@ DataFieldFileReader::GetPathFile(void) const
   if (!loaded)
     return postponed_value;
 
-  if ((mValue <= nFiles) && (mValue)) {
-    return fields[mValue].mTextPathFile;
-  }
+  if (mValue > 0 && mValue <= files.size())
+    return files[mValue].mTextPathFile;
+
   return _T("");
 }
 
@@ -468,31 +465,42 @@ DataFieldFileReader::addFile(const TCHAR *Text, const TCHAR *PText)
   // TODO enhancement: remove duplicates?
 
   // if too many files -> cancel
-  if (nFiles >= DFE_MAX_FILES)
+  if (files.full())
     return;
 
-  fields[nFiles].mTextFile = _tcsdup(Text);
-  fields[nFiles].mTextPathFile = _tcsdup(PText);
-
-  // Increment the number of files in the list
-  nFiles++;
+  Item &item = files.append();
+  item.mTextPathFile = _tcsdup(PText);
+  item.mTextFile = BaseName(item.mTextPathFile);
+  if (item.mTextFile == NULL)
+    item.mTextFile = item.mTextPathFile;
 }
 
 const TCHAR *
 DataFieldFileReader::GetAsString(void) const
 {
+  if (!loaded)
+    return postponed_value;
+
+  if (mValue < files.size())
+    return files[mValue].mTextPathFile;
+  else
+    return NULL;
+}
+
+const TCHAR *
+DataFieldFileReader::GetAsDisplayString() const
+{
   if (!loaded) {
     /* get basename from postponed_value */
-    const TCHAR *p = postponed_value + _tcslen(postponed_value);
-    while (p-- > postponed_value)
-      if (is_dir_separator(*p))
-        return p + 1;
+    const TCHAR *p = BaseName(postponed_value);
+    if (p == NULL)
+      p = postponed_value;
 
-    return postponed_value;
+    return p;
   }
 
-  if (mValue < nFiles)
-    return (fields[mValue].mTextFile);
+  if (mValue < files.size())
+    return files[mValue].mTextFile;
   else
     return NULL;
 }
@@ -505,10 +513,8 @@ DataFieldFileReader::Set(int Value)
   else
     postponed_value[0] = _T('\0');
 
-  if (Value <= (int)nFiles)
+  if ((unsigned)Value <= files.size())
     mValue = Value;
-  if (Value < 0)
-    mValue = 0;
 }
 
 void
@@ -516,7 +522,7 @@ DataFieldFileReader::Inc(void)
 {
   EnsureLoaded();
 
-  if (mValue < nFiles - 1) {
+  if (mValue < files.size() - 1) {
     mValue++;
     (mOnDataAccess)(this, daChange);
   }
@@ -548,25 +554,57 @@ DataFieldFileReader::Sort(void)
   }
 
   // Sort the filelist (except for the first (empty) element)
-  qsort(fields + 1, nFiles - 1, sizeof(DataFieldFileReaderEntry),
+  qsort(files.begin() + 1, files.size() - 1, sizeof(Item),
         DataFieldFileReaderCompare);
+  /* by the way, we're not using std::sort() here, because this
+     function would require the Item class to be copyable */
 }
 
-unsigned
-DataFieldFileReader::CreateComboList(void)
+ComboList *
+DataFieldFileReader::CreateComboList() const
 {
-  EnsureLoaded();
+  /* sorry for the const_cast .. this method keeps the promise of not
+     modifying the object, given that one does not count filling the
+     (cached) file list as "modification" */
+  EnsureLoadedDeconst();
 
-  unsigned int i = 0;
-  for (i = 0; i < nFiles; i++) {
-    mComboList.ComboPopupItemList[i] =
-        mComboList.CreateItem(i, i, fields[i].mTextFile, fields[i].mTextFile);
+  ComboList *cl = new ComboList();
+
+  TCHAR buffer[MAX_PATH];
+
+  for (unsigned i = 0; i < files.size(); i++) {
+    const TCHAR *path = files[i].mTextFile;
+    if (path == NULL)
+      path = _T("");
+
+    /* is a file with the same base name present in another data
+       directory? */
+
+    bool found = false;
+    for (unsigned j = 1; j < files.size(); j++) {
+      if (j != i && _tcscmp(path, files[j].mTextFile) == 0) {
+        found = true;
+        break;
+      }
+    }
+
+    if (found) {
+      /* yes - append the absolute path to allow the user to see the
+         difference */
+      _tcscpy(buffer, path);
+      _tcscat(buffer, _T(" ("));
+      _tcscat(buffer, files[i].mTextPathFile);
+      _tcscat(buffer, _T(")"));
+      path = buffer;
+    }
+
+    cl->Append(i, i, path, path);
     if (i == mValue) {
-      mComboList.ComboPopupItemSavedIndex = i;
+      cl->ComboPopupItemSavedIndex = i;
     }
   }
-  mComboList.ComboPopupItemCount = i;
-  return mComboList.ComboPopupItemCount;
+
+  return cl;
 }
 
 unsigned
@@ -574,15 +612,15 @@ DataFieldFileReader::size() const
 {
   EnsureLoadedDeconst();
 
-  return nFiles;
+  return files.size();
 }
 
-const DataFieldFileReaderEntry&
+const TCHAR *
 DataFieldFileReader::getItem(unsigned index) const
 {
   EnsureLoadedDeconst();
 
-  return fields[index];
+  return files[index].mTextPathFile;
 }
 
 void

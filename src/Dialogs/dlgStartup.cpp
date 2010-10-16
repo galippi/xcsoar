@@ -47,9 +47,34 @@ Copyright_License {
 #include "Version.hpp"
 #include "Asset.hpp"
 #include "StringUtil.hpp"
+#include "LocalPath.hpp"
+#include "OS/PathName.hpp"
 #include "Compiler.h"
 
-static WndForm *wf=NULL;
+static WndForm *wf = NULL;
+extern TCHAR startProfileFile[];
+
+static void
+PaintLogo(Canvas &canvas, RECT rc, const Bitmap &logo)
+{
+  BitmapCanvas bitmap_canvas(canvas, logo);
+
+  int window_width = rc.right - rc.left;
+  int window_height = rc.bottom - rc.top;
+  int bitmap_width = bitmap_canvas.get_width();
+  int bitmap_height = bitmap_canvas.get_height();
+
+  int scale = min((window_width - 10) / bitmap_width,
+                  (window_height - 10) / bitmap_height);
+
+  unsigned dest_width = bitmap_width * scale;
+  unsigned dest_height = bitmap_height * scale;
+
+  canvas.stretch((rc.left + rc.right - dest_width) / 2,
+                 (rc.top + rc.bottom - dest_height) / 2,
+                 dest_width, dest_height,
+                 bitmap_canvas, 0, 0, bitmap_width, bitmap_height);
+}
 
 /*
  * use a smaller icon for smaller screens because the "stretch" will not shrink
@@ -57,14 +82,14 @@ static WndForm *wf=NULL;
 static void
 OnSplashPaint(WindowControl *Sender, Canvas &canvas)
 {
+  canvas.clear_white();
+
   Bitmap splash_bitmap;
   if (Layout::scale_1024 > 1024 * 3 / 2)
     splash_bitmap.load(IDB_SWIFT);
   else
     splash_bitmap.load(IDB_SWIFT2);
-
-  BitmapCanvas bitmap_canvas(canvas, splash_bitmap);
-  canvas.stretch(bitmap_canvas);
+  PaintLogo(canvas, Sender->get_client_rect(), splash_bitmap);
 }
 
 static void
@@ -73,67 +98,67 @@ OnCloseClicked(gcc_unused WndButton &button)
   wf->SetModalResult(mrOK);
 }
 
-static CallBackTableEntry_t CallBackTable[] = {
+static void
+OnQuit(gcc_unused WndButton &button)
+{
+  wf->SetModalResult(mrCancel);
+}
+
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnSplashPaint),
   DeclareCallBackEntry(NULL)
 };
 
-extern TCHAR startProfileFile[];
-
-void
-dlgStartupShowModal(void)
+bool
+dlgStartupShowModal()
 {
-  WndProperty* wp;
   LogStartUp(_T("Startup dialog"));
 
-  if (Layout::landscape)
-    wf = LoadDialog(CallBackTable,
-                        XCSoarInterface::main_window, _T("IDR_XML_STARTUP_L"));
-  else
-    wf = LoadDialog(CallBackTable,
-                        XCSoarInterface::main_window, _T("IDR_XML_STARTUP"));
+  wf = LoadDialog(CallBackTable, XCSoarInterface::main_window,
+                  Layout::landscape ? _T("IDR_XML_STARTUP_L") :
+                                      _T("IDR_XML_STARTUP"));
+  assert(wf != NULL);
 
-  if (!wf)
-    return;
+  WndProperty* wp = ((WndProperty *)wf->FindByName(_T("prpProfile")));
+  assert(wp != NULL);
 
-  wp = ((WndProperty *)wf->FindByName(_T("prpProfile")));
-  if (!wp)
-    return;
-
-  DataFieldFileReader* dfe;
-  dfe = (DataFieldFileReader*)wp->GetDataField();
-  if (!dfe)
-    return;
+  DataFieldFileReader* dfe = (DataFieldFileReader*)wp->GetDataField();
+  assert(dfe != NULL);
 
   ((WndButton *)wf->FindByName(_T("cmdClose")))
     ->SetOnClickNotify(OnCloseClicked);
 
+  ((WndButton *)wf->FindByName(_T("cmdQuit")))->SetOnClickNotify(OnQuit);
+
   TCHAR temp[MAX_PATH];
 
   _stprintf(temp, _T("XCSoar: Version %s"), XCSoar_VersionString);
-  wf->SetCaption(temp);
+  WindowControl* wc;
+  wc = ((WindowControl *)wf->FindByName(_T("lblVersion")));
+  if (wc)
+    wc->SetCaption(temp);
 
-  static WndFrame* wDisclaimer1 = (WndFrame*)wf->FindByName(_T("frmDisclaimer1"));
-  wDisclaimer1->SetCaption(_T("Pilot assumes complete responsibility to ")
-                           _T("operate the aircraft safely. Maintain ")
-                           _T("effective lookout."));
-
-
-  if (is_altair())
-    dfe->ScanDirectoryTop(_T("config/*.prf"));
-  else
-    dfe->ScanDirectoryTop(_T("*.prf"));
+  dfe->ScanDirectoryTop(is_altair() ? _T("config/*.prf") : _T("*.prf"));
   dfe->Lookup(startProfileFile);
   wp->RefreshDisplay();
-  if (dfe->GetNumFiles( )<= 2) {
+
+  if (dfe->GetNumFiles() <= 2) {
     delete wf;
-    return;
+    return true;
   }
 
-  wf->ShowModal();
+  if (wf->ShowModal() != mrOK)
+    return false;
 
-  if (!string_is_empty(dfe->GetPathFile()))
-    _tcscpy(startProfileFile, dfe->GetPathFile());
+  const TCHAR *path = dfe->GetPathFile();
+  if (!string_is_empty(path)) {
+    _tcscpy(startProfileFile, path);
+
+    /* When a profile from a secondary data path is used, this path
+       becomes the primary data path */
+    SetPrimaryDataPath(DirName(path, temp));
+  }
 
   delete wf;
+  return true;
 }

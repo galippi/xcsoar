@@ -40,41 +40,35 @@ Copyright_License {
 #define XCSOAR_DATA_FIELD_ENUM_HPP
 
 #include "DataField/Base.hpp"
+#include "Util/NonCopyable.hpp"
+#include "Util/StaticArray.hpp"
 
 class DataFieldEnum: public DataField
 {
 public:
-  enum {
-    DFE_MAX_ENUMS = 128,
-  };
-
-  struct Entry {
+  struct Entry : private NonCopyable {
     TCHAR *mText;
     unsigned int index;
+
+    Entry():mText(NULL) {}
+    ~Entry();
   };
 
 private:
-  unsigned int nEnums;
+  StaticArray<Entry, 128> entries;
   unsigned int mValue;
-  Entry mEntries[DFE_MAX_ENUMS];
 
 public:
-  DataFieldEnum(const TCHAR *EditFormat, const TCHAR *DisplayFormat,
-                int Default, DataAccessCallback_t OnDataAccess) :
-    DataField(EditFormat, DisplayFormat, OnDataAccess),
-    nEnums(0),
+  DataFieldEnum(int Default, DataAccessCallback_t OnDataAccess) :
+    DataField(_T(""), _T(""), OnDataAccess),
     mValue(Default >= 0 ? Default : 0)
   {
     SupportCombo = true;
-
-    if (mOnDataAccess)
-      (mOnDataAccess)(this, daGet);
   }
-  virtual ~DataFieldEnum();
 
   void Inc(void);
   void Dec(void);
-  virtual unsigned CreateComboList();
+  virtual ComboList *CreateComboList() const;
 
   void replaceEnumText(unsigned int i, const TCHAR *Text);
   unsigned addEnumText(const TCHAR *Text);
@@ -94,9 +88,17 @@ public:
   #endif
 
   virtual void SetAsInteger(int Value);
+  virtual void SetAsString(const TCHAR *Value);
   void Sort(int startindex = 0);
 
-  unsigned Count() { return nEnums; }
+  unsigned Count() const {
+    return entries.size();
+  }
+
+  /**
+   * Finds an entry with the specified text.  Returns -1 if not found.
+   */
+  int Find(const TCHAR *text) const;
 };
 
 #endif

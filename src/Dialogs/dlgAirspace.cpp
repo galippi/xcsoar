@@ -38,8 +38,8 @@ Copyright_License {
 
 #include "Dialogs/Internal.hpp"
 #include "../Message.hpp"
-#include "Profile.hpp"
-#include "ProfileKeys.hpp"
+#include "Profile/Profile.hpp"
+#include "Profile/ProfileKeys.hpp"
 #include "Screen/Graphics.hpp"
 #include "Screen/Layout.hpp"
 #include "MainWindow.hpp"
@@ -70,10 +70,10 @@ OnAirspacePaintListItem(Canvas &canvas, const RECT rc, unsigned i)
 
   if (colormode) {
     canvas.white_pen();
-    canvas.set_text_color(MapGfx.GetAirspaceColourByClass(i,
+    canvas.set_text_color(Graphics::GetAirspaceColourByClass(i,
         XCSoarInterface::SettingsMap()));
     canvas.set_background_color(Color(0xFF, 0xFF, 0xFF));
-    canvas.select(MapGfx.GetAirspaceBrushByClass(i,
+    canvas.select(Graphics::GetAirspaceBrushByClass(i,
         XCSoarInterface::SettingsMap()));
     canvas.rectangle(rc.left + x0, rc.top + Layout::FastScale(2),
         rc.right - Layout::FastScale(2), rc.bottom - Layout::FastScale(2));
@@ -109,7 +109,7 @@ OnAirspaceListEnter(unsigned ItemIndex)
       Profile::SetAirspaceColor(ItemIndex,
           XCSoarInterface::SettingsMap().iAirspaceColour[ItemIndex]);
       changed = true;
-      MapGfx.InitAirspacePens(XCSoarInterface::SettingsMap());
+      Graphics::InitAirspacePens(XCSoarInterface::SettingsMap());
     }
 
     int p = dlgAirspacePatternsShowModal();
@@ -150,7 +150,7 @@ OnLookupClicked(WindowControl * Sender)
   dlgAirspaceSelect();
 }
 
-static CallBackTableEntry_t CallBackTable[] = {
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnCloseClicked),
   DeclareCallBackEntry(OnLookupClicked),
   DeclareCallBackEntry(NULL)

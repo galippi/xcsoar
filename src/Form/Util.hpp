@@ -41,6 +41,7 @@ Copyright_License {
 
 #include "Units.hpp"
 #include "SettingsMap.hpp"
+#include "Compiler.h"
 
 #include <tchar.h>
 
@@ -78,17 +79,32 @@ void
 LoadFormProperty(WndForm &form, const TCHAR *control_name,
                  UnitGroup_t unit_group, fixed value);
 
+gcc_pure
+int
+GetFormValueInteger(const WndForm &form, const TCHAR *control_name);
+
+gcc_pure
 bool
-SaveFormProperty(WndForm* wfm, const TCHAR* field, bool &value);
+GetFormValueBoolean(const WndForm &form, const TCHAR *control_name);
+
+gcc_pure
+fixed
+GetFormValueFixed(const WndForm &form, const TCHAR *control_name);
 
 bool
-SaveFormProperty(WndForm* wfm, const TCHAR* field, unsigned int &value);
+SaveFormProperty(const WndForm &form, const TCHAR* field, bool &value);
 
 bool
-SaveFormProperty(WndForm* wfm, const TCHAR* field, int &value);
+SaveFormProperty(const WndForm &form, const TCHAR* field, unsigned int &value);
 
 bool
-SaveFormProperty(WndForm* wfm, const TCHAR* field, short &value);
+SaveFormProperty(const WndForm &form, const TCHAR* field, int &value);
+
+bool
+SaveFormProperty(const WndForm &form, const TCHAR* field, short &value);
+
+bool
+SaveFormProperty(WndForm &form, const TCHAR *control_name, fixed &value);
 
 /**
  * Saves a form value into a variable and into the registry.
@@ -104,19 +120,19 @@ SaveFormProperty(const WndForm &form, const TCHAR *control_name,
                  bool &value, const TCHAR *registry_name);
 
 bool
-SaveFormProperty(WndForm *wfm, const TCHAR *field, const TCHAR *reg,
+SaveFormProperty(const WndForm &form, const TCHAR *field, const TCHAR *reg,
                  bool &value);
 
 bool
-SaveFormProperty(WndForm *wfm, const TCHAR *field, const TCHAR *reg,
+SaveFormProperty(const WndForm &form, const TCHAR *field, const TCHAR *reg,
                  unsigned int &value);
 
 bool
-SaveFormProperty(WndForm *wfm, const TCHAR *field, const TCHAR *reg,
+SaveFormProperty(const WndForm &form, const TCHAR *field, const TCHAR *reg,
                  int &value);
 
 bool
-SaveFormProperty(WndForm *wfm, const TCHAR *field, const TCHAR *reg,
+SaveFormProperty(const WndForm &form, const TCHAR *field, const TCHAR *reg,
                  short &value);
 
 bool
@@ -135,10 +151,11 @@ SaveFormProperty(const WndForm &form, const TCHAR *control_name,
                  const TCHAR *registry_name);
 
 bool
-SaveFormProperty(WndForm *wfm, const TCHAR *field, DisplayTextType_t &value);
+SaveFormProperty(const WndForm &form, const TCHAR *field,
+                 DisplayTextType_t &value);
 
 bool
-SaveFormProperty(WndForm *wfm, const TCHAR *field, const TCHAR *reg,
-                         DisplayTextType_t &value);
+SaveFormProperty(const WndForm &form, const TCHAR *field, const TCHAR *reg,
+                 DisplayTextType_t &value);
 
 #endif

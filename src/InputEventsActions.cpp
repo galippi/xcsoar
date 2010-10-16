@@ -78,9 +78,9 @@ doc/html/advanced/input/ALL		http://xcsoar.sourceforge.net/advanced/input/
 #include "MainWindow.hpp"
 #include "Atmosphere.h"
 #include "Gauge/GaugeFLARM.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "LocalPath.hpp"
-#include "ProfileKeys.hpp"
+#include "Profile/ProfileKeys.hpp"
 #include "UtilsText.hpp"
 #include "StringUtil.hpp"
 #include "Audio/Sound.hpp"
@@ -100,6 +100,7 @@ doc/html/advanced/input/ALL		http://xcsoar.sourceforge.net/advanced/input/
 #include "DeviceBlackboard.hpp"
 #include "UtilsSettings.hpp"
 #include "Pages.hpp"
+#include "Hardware/AltairControl.hpp"
 
 #include <assert.h>
 #include <ctype.h>
@@ -108,26 +109,6 @@ doc/html/advanced/input/ALL		http://xcsoar.sourceforge.net/advanced/input/
 
 using std::min;
 using std::max;
-
-#ifdef WIN32
-// DLL Cache
-typedef void (CALLBACK *DLLFUNC_INPUTEVENT)(TCHAR*);
-typedef void (CALLBACK *DLLFUNC_SETHINST)(HMODULE);
-#endif /* WIN32 */
-
-#define MAX_DLL_CACHE 256
-
-/**
- * Structure to hold a cached DLL item
- */
-struct DLLCACHESTRUCT 
-{
-  TCHAR *text;
-  HINSTANCE hinstance;
-};
-
-DLLCACHESTRUCT DLLCache[MAX_DLL_CACHE];
-int DLLCache_Count = 0;
 
 // -----------------------------------------------------------------------
 // Execution - list of things you can do
@@ -197,35 +178,6 @@ InputEvents::eventSnailTrail(const TCHAR *misc)
       Message::AddMessage(_("SnailTrail ON Short"));
     if (SettingsMap().TrailActive == 3)
       Message::AddMessage(_("SnailTrail ON Full"));
-  }
-}
-
-// VENTA3
-void
-InputEvents::eventVisualGlide(const TCHAR *misc)
-{
-
-  if (_tcscmp(misc, _T("toggle")) == 0) {
-    SetSettingsMap().VisualGlide++;
-
-    if (SettingsMap().VisualGlide == 2 && !SettingsMap().ExtendedVisualGlide)
-      SetSettingsMap().VisualGlide = 0;
-    else if (SettingsMap().VisualGlide > 2)
-      SetSettingsMap().VisualGlide = 0;
-
-  } else if (_tcscmp(misc, _T("off")) == 0)
-    SetSettingsMap().VisualGlide = 0;
-  else if (_tcscmp(misc, _T("steady")) == 0)
-    SetSettingsMap().VisualGlide = 1;
-  else if (_tcscmp(misc, _T("moving")) == 0)
-    SetSettingsMap().VisualGlide = 2;
-  else if (_tcscmp(misc, _T("show")) == 0) {
-    if (SettingsMap().VisualGlide == 0)
-      Message::AddMessage(_("VisualGlide OFF"));
-    if (SettingsMap().VisualGlide == 1)
-      Message::AddMessage(_("VisualGlide Steady"));
-    if (SettingsMap().VisualGlide == 2)
-      Message::AddMessage(_("VisualGlide Moving"));
   }
 }
 
@@ -526,7 +478,7 @@ InputEvents::eventSelectInfoBox(const TCHAR *misc)
 {
   if (_tcscmp(misc, _T("next")) == 0)
     InfoBoxManager::Event_Select(1);
-  if (_tcscmp(misc, _T("previous")) == 0)
+  else if (_tcscmp(misc, _T("previous")) == 0)
     InfoBoxManager::Event_Select(-1);
 }
 
@@ -537,7 +489,7 @@ InputEvents::eventChangeInfoBoxType(const TCHAR *misc)
 {
   if (_tcscmp(misc, _T("next")) == 0)
     InfoBoxManager::Event_Change(1);
-  if (_tcscmp(misc, _T("previous")) == 0)
+  else if (_tcscmp(misc, _T("previous")) == 0)
     InfoBoxManager::Event_Change(-1);
 }
 
@@ -593,14 +545,16 @@ InputEvents::eventArmAdvance(const TCHAR *misc)
 void InputEvents::eventDoInfoKey(const TCHAR *misc) {
   if (_tcscmp(misc, _T("up")) == 0)
     InfoBoxManager::ProcessKey(InfoBoxContent::ibkUp);
-  if (_tcscmp(misc, _T("down")) == 0)
+  else if (_tcscmp(misc, _T("down")) == 0)
     InfoBoxManager::ProcessKey(InfoBoxContent::ibkDown);
-  if (_tcscmp(misc, _T("left")) == 0)
+  else if (_tcscmp(misc, _T("left")) == 0)
     InfoBoxManager::ProcessKey(InfoBoxContent::ibkLeft);
-  if (_tcscmp(misc, _T("right")) == 0)
+  else if (_tcscmp(misc, _T("right")) == 0)
     InfoBoxManager::ProcessKey(InfoBoxContent::ibkRight);
-  if (_tcscmp(misc, _T("return")) == 0)
+  else if (_tcscmp(misc, _T("return")) == 0)
     InfoBoxManager::ProcessKey(InfoBoxContent::ibkEnter);
+  else if (_tcscmp(misc, _T("setup")) == 0)
+    InfoBoxManager::SetupFocused();
 }
 
 // Mode
@@ -1214,7 +1168,7 @@ InputEvents::eventNearestWaypointDetails(const TCHAR *misc)
   else if (_tcscmp(misc, _T("pan")) == 0)
     // big range..
     PopupNearestWaypointDetails(way_points,
-                                XCSoarInterface::main_window.map.MapProjection().GetPanLocation(),
+                                XCSoarInterface::main_window.map.VisibleProjection().GetPanLocation(),
                                 1.0e5);
 }
 
@@ -1291,7 +1245,7 @@ InputEvents::eventBeep(const TCHAR *misc)
   #endif
 
   #if defined(GNAV)
-  InputEvents::eventDLLExecute(_T("altairplatform.dll DoBeep2 1"));
+  altair_control.ShortBeep();
   #endif
 }
 
@@ -1327,128 +1281,8 @@ InputEvents::eventSetup(const TCHAR *misc)
   else if (_tcscmp(misc, _T("Teamcode")) == 0)
     dlgTeamCodeShowModal();
   else if (_tcscmp(misc, _T("Target")) == 0)
-#ifdef OLD_TASK // target control
-    dlgTarget();
-#else
-	(void)1;
-#endif
+    dlgTargetShowModal();
 }
-
-#ifdef WIN32
-static HINSTANCE _loadDLL(TCHAR *name);
-#endif /* WIN32 */
-
-// DLLExecute
-// Runs the plugin of the specified filename
-void
-InputEvents::eventDLLExecute(const TCHAR *misc)
-{
-  #ifdef WIN32
-  // LoadLibrary(_T("test.dll"));
-
-  LogStartUp(_T("%s"), misc);
-
-  TCHAR data[MAX_PATH];
-  TCHAR* dll_name;
-  TCHAR* func_name;
-  TCHAR* other;
-  TCHAR* pdest;
-
-  _tcscpy(data, misc);
-
-  // dll_name (up to first space)
-  pdest = _tcsstr(data, _T(" "));
-  if (pdest == NULL) {
-#ifdef _INPUTDEBUG_
-    _stprintf(input_errors[input_errors_count++],
-              _T("Invalid DLLExecute string - no DLL"));
-    InputEvents::showErrors();
-#endif
-    return;
-  }
-  *pdest = _T('\0');
-  dll_name = data;
-
-  // func_name (after first space)
-  func_name = pdest + 1;
-
-  // other (after next space to end of string)
-  pdest = _tcsstr(func_name, _T(" "));
-  if (pdest != NULL) {
-    *pdest = _T('\0');
-    other = pdest + 1;
-  } else {
-    other = NULL;
-  }
-
-  HINSTANCE hinstLib;	// Library pointer
-  DLLFUNC_INPUTEVENT lpfnDLLProc = NULL;	// Function pointer
-
-  // Load library, find function, execute, unload library
-  hinstLib = _loadDLL(dll_name);
-  if (hinstLib != NULL) {
-#ifdef _WIN32_WCE
-    lpfnDLLProc = (DLLFUNC_INPUTEVENT)GetProcAddress(hinstLib, func_name);
-#endif
-    if (lpfnDLLProc != NULL) {
-      (*lpfnDLLProc)(other);
-#ifdef _INPUTDEBUG_
-    } else {
-      DWORD le;
-      le = GetLastError();
-      _stprintf(input_errors[input_errors_count++],
-		_T("Problem loading function (%s) in DLL (%s) = %d"),
-		func_name, dll_name, le);
-      InputEvents::showErrors();
-#endif
-    }
-  }
-  #else /* !WIN32 */
-  // XXX implement with dlopen()
-  #endif /* !WIN32 */
-}
-
-#ifdef WIN32
-// Load a DLL (only once, keep a cache of the handle)
-//	TODO code: FreeLibrary - it would be nice to call FreeLibrary
-//      before exit on each of these
-static HINSTANCE
-_loadDLL(TCHAR *name)
-{
-  int i;
-  for (i = 0; i < DLLCache_Count; i++) {
-    if (_tcscmp(name, DLLCache[i].text) == 0)
-      return DLLCache[i].hinstance;
-  }
-  if (DLLCache_Count < MAX_DLL_CACHE) {
-    DLLCache[DLLCache_Count].hinstance = LoadLibrary(name);
-    if (DLLCache[DLLCache_Count].hinstance) {
-      DLLCache[DLLCache_Count].text = StringMallocParse(name);
-      DLLCache_Count++;
-
-      // First time setup... (should check version numbers etc...)
-      DLLFUNC_SETHINST lpfnDLLProc = NULL;
-#ifdef _WIN32_WCE
-      lpfnDLLProc = (DLLFUNC_SETHINST)
-	GetProcAddress(DLLCache[DLLCache_Count - 1].hinstance,
-		       _T("XCSAPI_SetHInst"));
-#endif
-      if (lpfnDLLProc)
-	lpfnDLLProc(GetModuleHandle(NULL));
-
-      return DLLCache[DLLCache_Count - 1].hinstance;
-#ifdef _INPUTDEBUG_
-    } else {
-      _stprintf(input_errors[input_errors_count++],
-		_T("Invalid DLLExecute - not loaded - %s"), name);
-      InputEvents::showErrors();
-#endif
-    }
-  }
-
-  return NULL;
-}
-#endif /* WIN32 */
 
 // AdjustForecastTemperature
 // Adjusts the maximum ground temperature used by the convection forecast
@@ -1727,20 +1561,25 @@ InputEvents::sub_Pan(int vswitch)
 void
 InputEvents::sub_PanCursor(int dx, int dy)
 {
-  const RECT &MapRect = MapProjection().GetMapRect();
+  const Projection &projection = main_window.map.VisibleProjection();
+
+  const RECT &MapRect = projection.GetMapRect();
   int X = (MapRect.right + MapRect.left) / 2;
   int Y = (MapRect.bottom + MapRect.top) / 2;
 
-  const GeoPoint pstart = MapProjection().Screen2LonLat(X, Y);
+  const GeoPoint pstart = projection.Screen2LonLat(X, Y);
 
   X += (MapRect.right - MapRect.left) * dx / 4;
   Y += (MapRect.bottom - MapRect.top) * dy / 4;
-  const GeoPoint pnew = MapProjection().Screen2LonLat(X, Y);
+  const GeoPoint pnew = projection.Screen2LonLat(X, Y);
 
   if (SettingsMap().EnablePan) {
     SetSettingsMap().PanLocation.Longitude += pstart.Longitude - pnew.Longitude;
     SetSettingsMap().PanLocation.Latitude += pstart.Latitude - pnew.Latitude;
   }
+
+  main_window.map.QuickRedraw(SettingsMap());
+  SendSettingsMap(true);
 }
 
 // called from UI or input event handler (same thread)
@@ -1759,25 +1598,29 @@ InputEvents::sub_AutoZoom(int vswitch)
 void
 InputEvents::sub_SetZoom(fixed value)
 {
-  if (SetSettingsMap().AutoZoom == 1) {
-    SetSettingsMap().AutoZoom = 0;  // disable autozoom if user manually changes zoom
+  if (SetSettingsMap().AutoZoom) {
+    SetSettingsMap().AutoZoom = false;  // disable autozoom if user manually changes zoom
     Message::AddMessage(_("AutoZoom OFF"));
   }
   SetSettingsMap().MapScale = value;
+
+  main_window.map.QuickRedraw(SettingsMap());
+  SendSettingsMap(true);
 }
 
 void
 InputEvents::sub_ScaleZoom(int vswitch)
 {
+  const MapWindowProjection &projection = main_window.map.VisibleProjection();
+
   fixed value;
   if (positive(SettingsMap().MapScale))
     value = SettingsMap().MapScale;
   else
-    value = MapProjection().GetMapScaleUser();
+    value = projection.GetMapScaleUser();
 
-  MapWindowProjection copy = MapProjection();
-  if (copy.HaveScaleList()) {
-    value = copy.StepMapScale(fixed(value), -vswitch);
+  if (projection.HaveScaleList()) {
+    value = projection.StepMapScale(fixed(value), -vswitch);
   } else {
     if (abs(vswitch) >= 4) {
       if (vswitch == 4)

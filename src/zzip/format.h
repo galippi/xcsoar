@@ -18,6 +18,7 @@
 #define _ZZIP_FORMAT_H
 
 #include <zzip/types.h>
+#include <zzip/__hints.h>
 /* we have ICO C 9X types defined */
 
 /*
@@ -34,13 +35,13 @@ struct zzip_version
 {
     zzip_byte_t   version[1];
     zzip_byte_t   ostype[1];
-} __zzip_attribute__((packed));
+} ZZIP_GNUC_PACKED;
 
 struct zzip_dostime
 {
     zzip_byte_t   time[2];
     zzip_byte_t   date[2];
-} __zzip_attribute__((packed));
+} ZZIP_GNUC_PACKED;
 
 #ifdef ZZIP_NEED_PACKED
 /* if your compiler does interesting things about struct packing... */
@@ -74,7 +75,7 @@ struct zzip_file_header
     zzip_byte_t   z_extras[2]; /* extra field length */
     /* followed by filename (of variable size) */
     /* followed by extra field (of variable size) */
-} __zzip_attribute__((packed));
+} ZZIP_GNUC_PACKED;
 #define zzip_file_header_headerlength (4+2+2+2+4+4+4+4+2+2)
 
 /* B. data descriptor
@@ -90,7 +91,7 @@ struct zzip_file_trailer
     zzip_byte_t   z_crc32[4]; /* crc-32 */
     zzip_byte_t   z_csize[4]; /* compressed size */
     zzip_byte_t   z_usize[4]; /* uncompressed size */
-} __zzip_attribute__((packed));
+} ZZIP_GNUC_PACKED;
 #define zzip_file_trailer_headerlength (4+4+4+4)
 
 /* C. central directory structure:
@@ -124,7 +125,7 @@ struct zzip_disk_entry
     /* followed by filename (of variable size) */
     /* followed by extra field (of variable size) */
     /* followed by file comment (of variable size) */
-} __zzip_attribute__((packed));
+} ZZIP_GNUC_PACKED;
 #define zzip_disk_entry_headerlength (4+2+2+2+2+4+4+4+4+2+2+2+2+2+4+4)
 
 
@@ -148,7 +149,7 @@ struct zzip_root_dirent
     zzip_byte_t    z_filetype[2];
     zzip_byte_t    z_filemode[4];
     zzip_byte_t    z_off[4];
-} __zzip_attribute__((packed));
+} ZZIP_GNUC_PACKED;
 
 
 /* end of central dir record */
@@ -166,7 +167,7 @@ struct zzip_disk_trailer
                           * the starting disk number */
     zzip_byte_t  z_comment[2];  /* zipfile comment length */
     /* followed by zipfile comment (of variable size) */
-} __zzip_attribute__((packed));
+} ZZIP_GNUC_PACKED;
 #define zzip_disk_trailer_headerlength (4+2+2+2+2+4+4+2)
 
 /* extra field should be type + size + data + type + size + data ... */
@@ -174,7 +175,7 @@ struct zzip_extra_block
 {                              /* fetch.h macros do not need this struct */
     zzip_byte_t  z_datatype[2];       /* as input type - a mere <char*> is okay */
     zzip_byte_t  z_datasize[2];       /* being returned by xx_to_extras usually */
-} __zzip_attribute__((packed));
+} ZZIP_GNUC_PACKED;
 #define zzip_extra_block_headerlength (2+2)
 
 /* Zip64 end of central dir record */
@@ -194,7 +195,7 @@ struct zzip_disk64_trailer
     zzip_byte_t  z_rootseek[8]; /* offset of start of central directory with respect to *
                           * the starting disk number */
     /* followed by zip64 extensible data sector (of variable size) */
-} __zzip_attribute__((packed));
+} ZZIP_GNUC_PACKED;
 #define zzip_disk64_trailer_headerlength (4+8+2+2+4+4+8+8+8+8)
 
 /* z_flags */

@@ -359,10 +359,6 @@ static void
 OnFilterDistance(DataField *Sender, DataField::DataAccessKind_t Mode)
 {
   switch (Mode) {
-  case DataField::daGet:
-  case DataField::daPut:
-    break;
-
   case DataField::daChange:
   case DataField::daInc:
   case DataField::daDec:
@@ -376,13 +372,6 @@ static void
 OnFilterDirection(DataField *Sender, DataField::DataAccessKind_t Mode)
 {
   switch (Mode) {
-  case DataField::daGet:
-    Sender->Set(_T("*"));
-    break;
-
-  case DataField::daPut:
-    break;
-
   case DataField::daChange:
   case DataField::daInc:
   case DataField::daDec:
@@ -396,10 +385,6 @@ static void
 OnFilterType(DataField *Sender, DataField::DataAccessKind_t Mode)
 {
   switch (Mode) {
-  case DataField::daGet:
-  case DataField::daPut:
-    break;
-
   case DataField::daChange:
   case DataField::daInc:
   case DataField::daDec:
@@ -500,7 +485,7 @@ OnWPSCloseClicked(gcc_unused WndButton &button)
   wf->SetModalResult(mrCancel);
 }
 
-static int
+static void
 OnTimerNotify(WindowControl * Sender)
 {
   (void)Sender;
@@ -512,7 +497,6 @@ OnTimerNotify(WindowControl * Sender)
       wpDirection->RefreshDisplay();
     }
   }
-  return 0;
 }
 
 static bool
@@ -547,7 +531,7 @@ FormKeyDown(WindowControl *Sender, unsigned key_code)
   return true;
 }
 
-static CallBackTableEntry_t CallBackTable[] = {
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnFilterDistance),
   DeclareCallBackEntry(OnFilterDirection),
   DeclareCallBackEntry(OnFilterType),

@@ -42,7 +42,8 @@ Copyright_License {
 #include "LogFile.hpp"
 #include "SettingsMap.hpp"
 #include "Screen/Layout.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
+#include "Sizes.h"
 
 #include <stdio.h>
 
@@ -57,14 +58,15 @@ Screen
 leaving 220 = 110 control width
 */
 
-
-unsigned InfoBoxLayout::InfoBoxGeometry = ibTop4Bottom4;
-unsigned InfoBoxLayout::ControlWidth;
-unsigned InfoBoxLayout::ControlHeight;
-unsigned InfoBoxLayout::TitleHeight;
-bool InfoBoxLayout::fullscreen = false;
-unsigned InfoBoxLayout::numInfoWindows = 8;
-
+namespace InfoBoxLayout
+{
+  unsigned InfoBoxGeometry = ibTop4Bottom4;
+  unsigned ControlWidth;
+  unsigned ControlHeight;
+  unsigned TitleHeight;
+  bool fullscreen = false;
+  unsigned numInfoWindows = 8;
+}
 
 void
 InfoBoxLayout::Init(RECT rc)

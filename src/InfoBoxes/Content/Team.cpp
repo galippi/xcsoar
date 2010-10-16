@@ -58,14 +58,18 @@ InfoBoxContentTeamCode::Update(InfoBoxWindow &infobox)
   infobox.SetValue(XCSoarInterface::Calculated().OwnTeamCode);
 
   // Set Comment
-  infobox.SetComment(XCSoarInterface::SettingsComputer().TeammateCode);
-  if (!XCSoarInterface::SettingsComputer().TeamFlarmTracking)
-    infobox.SetColorBottom(0);
-  else if (XCSoarInterface::Basic().flarm.FindTraffic(
-      XCSoarInterface::SettingsComputer().TeamFlarmIdTarget) != NULL)
-    infobox.SetColorBottom(2);
+  if (XCSoarInterface::SettingsComputer().TeammateCodeValid == true){
+    infobox.SetComment(XCSoarInterface::SettingsComputer().TeammateCode);
+    if (!XCSoarInterface::SettingsComputer().TeamFlarmTracking)
+      infobox.SetColorBottom(0);
+    else if (XCSoarInterface::Basic().flarm.FindTraffic(
+        XCSoarInterface::SettingsComputer().TeamFlarmIdTarget) != NULL)
+      infobox.SetColorBottom(2);
+    else
+      infobox.SetColorBottom(1);
+  }
   else
-    infobox.SetColorBottom(1);
+    infobox.SetCommentInvalid();
 }
 
 bool
@@ -110,15 +114,20 @@ InfoBoxContentTeamCode::HandleKey(const InfoBoxKeyCodes keycode)
 void
 InfoBoxContentTeamBearing::Update(InfoBoxWindow &infobox)
 {
-  // Set Value
-  TCHAR tmp[32];
-  _stprintf(tmp, _T("%2.0f")_T(DEG)_T("T"), (double)
-            XCSoarInterface::Calculated().TeammateBearing.value_degrees());
-  infobox.SetValue(tmp);
+  if (XCSoarInterface::SettingsComputer().TeamFlarmIdTarget.defined() ||
+      XCSoarInterface::SettingsComputer().TeammateCodeValid == true){
+    // Set Value
+    TCHAR tmp[32];
+    _stprintf(tmp, _T("%2.0f")_T(DEG)_T("T"), (double)
+              XCSoarInterface::Calculated().TeammateBearing.value_degrees());
+    infobox.SetValue(tmp);
+  }
+  else
+    infobox.SetValueInvalid();
 
   // Set Comment
   if (!XCSoarInterface::SettingsComputer().TeamFlarmIdTarget.defined())
-    infobox.SetComment(_T("---"));
+    infobox.SetCommentInvalid();
   else if (!string_is_empty(XCSoarInterface::SettingsComputer().TeamFlarmCNTarget))
     infobox.SetComment(XCSoarInterface::SettingsComputer().TeamFlarmCNTarget);
   else
@@ -175,7 +184,7 @@ InfoBoxContentTeamBearingDiff::Update(InfoBoxWindow &infobox)
 
   // Set Comment
   if (!XCSoarInterface::SettingsComputer().TeamFlarmIdTarget.defined())
-    infobox.SetComment(_T("---"));
+    infobox.SetCommentInvalid();
   else if (!string_is_empty(XCSoarInterface::SettingsComputer().TeamFlarmCNTarget))
     infobox.SetComment(XCSoarInterface::SettingsComputer().TeamFlarmCNTarget);
   else
@@ -207,7 +216,7 @@ InfoBoxContentTeamDistance::Update(InfoBoxWindow &infobox)
 
   // Set Comment
   if (!XCSoarInterface::SettingsComputer().TeamFlarmIdTarget.defined())
-    infobox.SetComment(_T("---"));
+    infobox.SetCommentInvalid();
   else if (!string_is_empty(XCSoarInterface::SettingsComputer().TeamFlarmCNTarget))
     infobox.SetComment(XCSoarInterface::SettingsComputer().TeamFlarmCNTarget);
   else

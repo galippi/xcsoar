@@ -46,7 +46,7 @@ Copyright_License {
 
 #include <tchar.h>
 
-class ComPort;
+class Port;
 
 /**
  * Writes one line of NMEA data.
@@ -55,6 +55,6 @@ class ComPort;
  * @param line the line without asterisk, checksum and newline
  */
 void
-PortWriteNMEA(ComPort *port, const char *line);
+PortWriteNMEA(Port *port, const char *line);
 
 #endif

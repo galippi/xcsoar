@@ -1,15 +1,23 @@
 #ifndef NAV_DIJKSTRA_HPP
 #define NAV_DIJKSTRA_HPP
 
-#include <vector>
 #include "Util/NonCopyable.hpp"
 #include "Dijkstra.hpp"
+
+#include <algorithm>
+#include <assert.h>
 
 #ifdef INSTRUMENT_TASK
 extern long count_dijkstra_queries;
 #endif
 
+/**
+ * A reference to a trace/search point: first element is the stage
+ * number (turn point number); second element is the index in the
+ * #TracePointVector / #SearchPointVector.
+ */
 typedef std::pair<unsigned, unsigned> ScanTaskPoint;
+
 typedef Dijkstra<ScanTaskPoint> DijkstraTaskPoint;
 
 /**
@@ -25,6 +33,11 @@ class NavDijkstra:
   private NonCopyable 
 {
 public:
+  enum {
+    MAX_STAGES = 16,
+  };
+
+public:
   /** 
    * Constructor
    * 
@@ -34,12 +47,10 @@ public:
    */
   NavDijkstra(const unsigned _num_stages):
     num_stages(_num_stages)
-    {
-      solution.reserve(num_stages);
-      for (unsigned i=0; i<num_stages; i++) {
-        solution.push_back(T());
-      }
-    }
+  {
+    assert(num_stages <= MAX_STAGES);
+    std::fill(solution, solution + num_stages, T());
+  }
 
 /** 
  * Test whether two points (as previous search locations) are significantly
@@ -194,7 +205,7 @@ protected:
   }
 
   unsigned num_stages; /**< Number of stages in search */
-  std::vector<T> solution; /**< Current solution */
+  T solution[MAX_STAGES];
 };
 
 #endif

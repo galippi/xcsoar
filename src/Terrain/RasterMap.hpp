@@ -42,20 +42,20 @@ Copyright_License {
 #include "RasterProjection.hpp"
 #include "RasterTile.hpp"
 #include "Navigation/GeoPoint.hpp"
-#include "Geo/BoundsRectangle.hpp"
 #include "Util/NonCopyable.hpp"
 #include "Compiler.h"
 
-class RasterMap : private NonCopyable {
-  static int ref_count;
+#include <tchar.h>
 
+class FileCache;
+
+class RasterMap : private NonCopyable {
   char *path;
   RasterTileCache raster_tile_cache;
-  BoundsRectangle bounds;
   RasterProjection projection;
 
 public:
-  RasterMap(const char *path);
+  RasterMap(const TCHAR *path, const TCHAR *world_file, FileCache *cache);
   ~RasterMap();
 
   bool isMapLoaded() const {
@@ -64,12 +64,12 @@ public:
 
   gcc_pure
   bool inside(const GeoPoint &pt) const {
-    return bounds.inside(pt);
+    return raster_tile_cache.GetBounds().inside(pt);
   }
 
   gcc_pure
   GeoPoint GetMapCenter() const {
-    return bounds.center();
+    return raster_tile_cache.GetBounds().center();
   }
 
   void SetViewCenter(const GeoPoint &location);
@@ -80,9 +80,6 @@ public:
 
   gcc_pure
   short GetField(const GeoPoint &location) const;
-
- protected:
-  void _ReloadJPG2000(void);
 };
 
 

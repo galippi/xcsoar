@@ -37,9 +37,10 @@ Copyright_License {
 */
 
 #include "Components.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "Interface.hpp"
-#include "ProfileKeys.hpp"
+#include "Profile/ProfileKeys.hpp"
+#include "Profile/DisplayConfig.hpp"
 #include "Asset.hpp"
 #include "Simulator.hpp"
 #include "InfoBoxes/InfoBoxWindow.hpp"
@@ -67,6 +68,7 @@ Copyright_License {
 #include "Marks.hpp"
 #include "Device/device.hpp"
 #include "Topology/TopologyStore.hpp"
+#include "Topology/TopologyGlue.hpp"
 #include "Audio/VarioSound.h"
 #include "Screen/Graphics.hpp"
 #include "Screen/Busy.hpp"
@@ -81,6 +83,10 @@ Copyright_License {
 #include "InstrumentThread.hpp"
 #include "Replay/Replay.hpp"
 #include "ResourceLoader.hpp"
+#include "LocalPath.hpp"
+#include "IO/FileCache.hpp"
+#include "Hardware/AltairControl.hpp"
+#include "Hardware/Display.hpp"
 #include "Compiler.h"
 
 #include "Waypoint/Waypoints.hpp"
@@ -98,6 +104,7 @@ Copyright_License {
 #include "ProgressGlue.hpp"
 #include "Pages.hpp"
 
+FileCache *file_cache;
 Marks *marks;
 TopologyStore *topology;
 RasterTerrain *terrain;
@@ -133,21 +140,63 @@ ProtectedAirspaceWarningManager airspace_warnings(airspace_warning);
 GlideComputer glide_computer(protected_task_manager, airspace_warnings,
                              task_events);
 
-void
-XCSoarInterface::PreloadInitialisation(bool ask)
+#ifdef GNAV
+AltairControl altair_control;
+#endif
+
+bool
+XCSoarInterface::LoadProfile()
 {
-  if (!ask) {
-    Profile::Load();
-    Profile::Use();
-  } else {
-    if (Profile::use_files())
-      dlgStartupShowModal();
+  if (Profile::use_files() && !dlgStartupShowModal())
+    return false;
 
-    Profile::Load();
-    Profile::Use();
+  Profile::Load();
+  Profile::Use();
 
-    ProgressGlue::Create(_("Initialising"));
+  ProgressGlue::Create(_("Initialising"));
+
+  return true;
+}
+
+static void
+LoadDisplayOrientation()
+{
+  if (!Display::RotateSupported())
+    return;
+
+  Display::orientation orientation = Profile::GetDisplayOrientation();
+  if (orientation == Display::ORIENTATION_DEFAULT)
+    return;
+
+  if (!Display::Rotate(orientation)) {
+    LogStartUp(_T("Display rotation failed"));
+    return;
   }
+
+  LogStartUp(_T("Display rotated"));
+
+  XCSoarInterface::main_window.Initialise();
+
+  RECT rc = SystemWindowSize();
+  XCSoarInterface::main_window.fast_move(rc.left, rc.top,
+                                         rc.right - rc.left, rc.bottom - rc.top);
+
+  /* force the progress dialog to update its layout */
+  ProgressGlue::Close();
+  ProgressGlue::Create(NULL);
+}
+
+static void
+RestoreDisplayOrientation()
+{
+  if (!Display::RotateSupported())
+    return;
+
+  Display::orientation orientation = Profile::GetDisplayOrientation();
+  if (orientation == Display::ORIENTATION_DEFAULT)
+    return;
+
+  Display::RotateRestore();
 }
 
 void
@@ -226,8 +275,6 @@ XCSoarInterface::Startup(HINSTANCE hInstance)
   MainWindow::register_class(hInst);
   MapWindow::register_class(hInst);
 
-  PreloadInitialisation(false);
-
   // Send the SettingsMap to the DeviceBlackboard
   SendSettingsMap();
 
@@ -240,7 +287,7 @@ XCSoarInterface::Startup(HINSTANCE hInstance)
   if (!main_window.defined())
     return false;
 
-  main_window.initialise();
+  main_window.Initialise();
 
 #ifdef SIMULATOR_AVAILABLE
   // prompt for simulator if not set by command line argument "-simulator" or "-fly"
@@ -248,13 +295,20 @@ XCSoarInterface::Startup(HINSTANCE hInstance)
     global_simulator_flag = dlgSimulatorPromptShowModal();
 #endif
 
-  PreloadInitialisation(true);
+  if (!LoadProfile())
+    return false;
 
-  MapGfx.InitialiseConfigured(SettingsMap());
+  LoadDisplayOrientation();
 
-#ifndef DEBUG_TRANSLATIONS
+  main_window.InitialiseConfigured();
+
+  TCHAR path[MAX_PATH];
+  LocalPath(path, _T("cache"));
+  file_cache = new FileCache(path);
+
+  Graphics::InitialiseConfigured(SettingsMap());
+
   ReadLanguageFile();
-#endif
 
   status_messages.LoadFile();
   InputEvents::readFile();
@@ -301,11 +355,12 @@ XCSoarInterface::Startup(HINSTANCE hInstance)
 
   // Read the topology file(s)
   topology = new TopologyStore();
+  LoadConfiguredTopology(*topology);
 
   // Read the terrain file
   ProgressGlue::Create(_("Loading Terrain File..."));
   LogStartUp(_T("OpenTerrain"));
-  terrain = RasterTerrain::OpenTerrain();
+  terrain = RasterTerrain::OpenTerrain(file_cache);
 
   // Read the waypoint files
   WayPointGlue::ReadWaypoints(way_points, terrain);
@@ -439,7 +494,7 @@ XCSoarInterface::Shutdown(void)
   logger.guiStopLogger(Basic(), true);
 
   // Save settings to profile
-  ProgressGlue::Create(_("Shutdown, saving profile..."));
+  ProgressGlue::Create(_("Shutdown, saving Profile/Profile..."));
   Profile::Save();
 
   // Stop sound
@@ -505,7 +560,10 @@ XCSoarInterface::Shutdown(void)
   LogStartUp(_T("CloseTerrain"));
 
   delete terrain;
+
+  LogStartUp(_T("CloseTopology"));
   delete topology;
+
   delete marks;
 
   // Close any device connections
@@ -515,14 +573,6 @@ XCSoarInterface::Shutdown(void)
 
   // Save everything in the persistent memory file
   SaveCalculationsPersist(Basic(), Calculated());
-
-  if (is_altair()) {
-    LogStartUp(_T("Altair shutdown"));
-    Sleep(2500);
-    InputEvents::eventDLLExecute(_T("altairplatform.dll SetShutdown 1"));
-    while (true)
-      Sleep(100); // free time up for processor to perform shutdown
-  }
 
   // Clear the FLARM database
   FlarmDetails::Reset();
@@ -541,13 +591,12 @@ XCSoarInterface::Shutdown(void)
   // Clear the EGM96 database
   CloseGeoid();
 
+  delete file_cache;
+
   LogStartUp(_T("Close Windows - main "));
   main_window.reset();
 
-#ifdef DEBUG_TRANSLATIONS
-  LogStartUp(_T("Writing missing translations"));
-  WriteMissingTranslations();
-#endif
+  RestoreDisplayOrientation();
 
   StartupLogFreeRamAndStorage();
 

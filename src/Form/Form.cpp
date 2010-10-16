@@ -89,8 +89,8 @@ add_border(WindowStyle style)
 }
 
 WndForm::WndForm(SingleWindow &_main_window,
-                 const TCHAR *Caption,
                  int X, int Y, int Width, int Height,
+                 const TCHAR *Caption,
                  const WindowStyle style):
   main_window(_main_window),
   mModalResult(0),
@@ -98,6 +98,8 @@ WndForm::WndForm(SingleWindow &_main_window,
   mhTitleFont(&Fonts::MapBold),
   mOnTimerNotify(NULL), mOnKeyDownNotify(NULL)
 {
+  _tcscpy(mCaption, Caption);
+
   set(main_window, X, Y, Width, Height, add_border(style));
 
   // Create ClientWindow
@@ -112,8 +114,6 @@ WndForm::WndForm(SingleWindow &_main_window,
   client_area.SetBackColor(GetBackColor());
 
   cbTimerID = set_timer(1001, 500);
-
-  SetCaption(Caption);
 
 #if !defined(ENABLE_SDL) && !defined(NDEBUG)
   ::SetWindowText(hWnd, mCaption);
@@ -209,11 +209,9 @@ WndForm::on_command(unsigned id, unsigned code)
   return false;
 }
 
-const Font *
+void
 WndForm::SetTitleFont(const Font &font)
 {
-  const Font *res = mhTitleFont;
-
   if (mhTitleFont != &font){
     // todo
     mhTitleFont = &font;
@@ -221,9 +219,6 @@ WndForm::SetTitleFont(const Font &font)
     invalidate();
     UpdateLayout();
   }
-
-  return res;
-
 }
 
 #ifndef ENABLE_SDL
@@ -407,7 +402,7 @@ WndForm::on_paint(Canvas &canvas)
 
   // Draw titlebar text
   canvas.text_opaque(mTitleRect.left + Layout::FastScale(2),
-      mTitleRect.top, &mTitleRect, mCaption);
+                     mTitleRect.top, mTitleRect, mCaption);
 }
 
 void
@@ -423,8 +418,9 @@ WndForm::SetCaption(const TCHAR *Value)
   }
 }
 
-Color WndForm::SetBackColor(Color Value)
+void
+WndForm::SetBackColor(Color Value)
 {
   client_area.SetBackColor(Value);
-  return ContainerControl::SetBackColor(Value);
+  ContainerControl::SetBackColor(Value);
 }

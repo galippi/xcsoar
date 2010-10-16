@@ -36,6 +36,7 @@ Copyright_License {
 }
 */
 
+#include "Device/NullPort.hpp"
 #include "Device/Driver.hpp"
 #include "Device/Register.hpp"
 #include "Device/Parser.hpp"
@@ -133,16 +134,17 @@ SettingsMapBlackboard::SettingsMapBlackboard() {}
 static void
 Dump(GeoPoint location)
 {
-  double latitude = location.Latitude.value_degrees();
-  double longitude = location.Longitude.value_degrees();
+  int latitude = (int)(location.Latitude.value_degrees() * 3600);
+  char north_or_south = latitude < 0 ? 'S' : 'N';
+  latitude = abs(latitude);
 
-  printf("%d.%02u.%02u;%d.%02u.%02u",
-         (int)latitude,
-         (int)(latitude * 60) % 60,
-         (int)(latitude * 3600) % 60,
-         (int)longitude,
-         (int)(longitude * 60) % 60,
-         (int)(longitude * 3600) % 60);
+  int longitude = (int)(location.Longitude.value_degrees() * 3600);
+  char east_or_west = latitude < 0 ? 'W' : 'E';
+  longitude = abs(longitude);
+
+  printf("%d.%02u.%02u%c;%d.%02u.%02u%c",
+         latitude / 3600, (latitude / 60) % 60, latitude % 60, north_or_south,
+         longitude / 3600, (longitude / 60) % 60, longitude % 60, east_or_west);
 }
 
 static void
@@ -231,7 +233,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  ComPort port(_T("dummy"), 19200, *(ComPort::Handler *)NULL);
+  NullPort port(*(Port::Handler *)NULL);
   device.Com = &port;
   device.enable_baro = true;
 

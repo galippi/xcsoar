@@ -40,7 +40,7 @@ Copyright_License {
 #include "Units.hpp"
 #include "Device/device.hpp"
 #include "Math/FastMath.h"
-#include "DataField/Base.hpp"
+#include "DataField/Boolean.hpp"
 #include "MainWindow.hpp"
 #include "PeriodClock.hpp"
 
@@ -73,9 +73,6 @@ static void VegaWriteDemo(void) {
 static void OnVegaDemoW(DataField *Sender,
 			 DataField::DataAccessKind_t Mode){
   switch(Mode){
-    case DataField::daGet:
-    break;
-    case DataField::daPut:
     case DataField::daChange:
       VegaDemoW = Units::ToSysVSpeed(Sender->GetAsFixed());
       VegaWriteDemo();
@@ -87,9 +84,6 @@ static void OnVegaDemoW(DataField *Sender,
 static void OnVegaDemoV(DataField *Sender,
 			 DataField::DataAccessKind_t Mode){
   switch(Mode){
-    case DataField::daGet:
-    break;
-    case DataField::daPut:
     case DataField::daChange:
       VegaDemoV = Units::ToSysSpeed(Sender->GetAsFixed());
       VegaWriteDemo();
@@ -101,9 +95,6 @@ static void OnVegaDemoV(DataField *Sender,
 static void OnVegaDemoAudioClimb(DataField *Sender,
 			 DataField::DataAccessKind_t Mode){
   switch(Mode){
-    case DataField::daGet:
-    break;
-    case DataField::daPut:
     case DataField::daChange:
       VegaDemoAudioClimb = (Sender->GetAsInteger()==1);
       VegaWriteDemo();
@@ -112,7 +103,7 @@ static void OnVegaDemoAudioClimb(DataField *Sender,
 }
 
 
-static CallBackTableEntry_t CallBackTable[]={
+static CallBackTableEntry CallBackTable[]={
   DeclareCallBackEntry(OnVegaDemoW),
   DeclareCallBackEntry(OnVegaDemoV),
   DeclareCallBackEntry(OnVegaDemoAudioClimb),
@@ -149,7 +140,8 @@ void dlgVegaDemoShowModal(void){
 
   wp = (WndProperty*)wf->FindByName(_T("prpVegaDemoAudioClimb"));
   if (wp) {
-    wp->GetDataField()->Set(VegaDemoAudioClimb);
+    DataFieldBoolean *df = (DataFieldBoolean *)wp->GetDataField();
+    df->Set(VegaDemoAudioClimb);
     wp->RefreshDisplay();
   }
 

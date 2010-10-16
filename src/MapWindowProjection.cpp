@@ -40,7 +40,7 @@ Copyright_License {
 #include "Math/FastRotation.hpp"
 #include "Screen/Layout.hpp"
 #include "SettingsComputer.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "NMEA/Info.hpp"
 #include "NMEA/Derived.hpp"
 #include "Waypoint/Waypoint.hpp"
@@ -126,35 +126,15 @@ MapWindowProjection::CalculateOrientationTargetPan
  const SETTINGS_MAP &settings)
 
 {
-  // Target pan mode, show track up when looking at current task point,
-  // otherwise north up.  If circling, orient towards target.
-
-#ifdef OLD_TASK // target control
-
-  _origin_centered = true;
-  if (((int)task.getActiveIndex()==settings.TargetPanIndex)
-      &&(settings.DisplayOrientation != NORTHUP)
-      &&(settings.DisplayOrientation != NORTHTRACK)
-      )    {
-    if (DisplayMode == dmCircling) {
-      // target-up
-      DisplayAngle = DerivedDrawInfo.WaypointBearing;
-      DisplayAircraftAngle =
-        DrawInfo.TrackBearing-DisplayAngle;
-    } else {
-      // track up
-      DisplayAngle = DrawInfo.TrackBearing;
-      DisplayAircraftAngle = 0.0;
-    }
-  } else {
-    // North up
-    DisplayAngle = 0.0;
+  if (DerivedDrawInfo.common_stats.active_taskpoint_index == settings.TargetPanIndex) {
+        CalculateOrientationNormal(DrawInfo,
+        DerivedDrawInfo,
+        settings);
+  }
+  else {
+    DisplayAngle.SetAngle(Angle::native(fixed_zero));
     DisplayAircraftAngle = DrawInfo.TrackBearing;
   }
-#else
-  DisplayAngle.SetAngle(Angle::native(fixed_zero));
-  DisplayAircraftAngle = DrawInfo.TrackBearing;
-#endif
 }
 
 void
@@ -292,13 +272,14 @@ MapWindowProjection::UpdateMapScale(const DERIVED_INFO &DerivedDrawInfo,
   static fixed StartingAutoMapScale(fixed_zero);
   fixed AutoZoomFactor;
   static DisplayMode_t DisplayModeLast = DisplayMode;
+  static bool TargetPanLast = false;
+  static fixed TargetPanUnZoom = fixed_one;
 
   // if there is user intervention in the scale
   if (positive(settings_map.MapScale)) {
     fixed ext_mapscale = LimitMapScale(fixed(settings_map.MapScale),
         settings_map);
-    if ((fabs(_RequestedMapScale - ext_mapscale) > fixed(0.05))
-        && positive(ext_mapscale) && (DisplayMode == DisplayModeLast))
+    if (positive(ext_mapscale) && DisplayMode == DisplayModeLast)
       _RequestedMapScale = ext_mapscale;
   }
 
@@ -314,6 +295,10 @@ MapWindowProjection::UpdateMapScale(const DERIVED_INFO &DerivedDrawInfo,
     wpd = DerivedDrawInfo.ZoomDistance;
 
   if (settings_map.TargetPan) {
+    if (!TargetPanLast) { // just entered targetpan so save zoom
+     TargetPanLast = true;
+     TargetPanUnZoom = MapScale;
+    }
     // set scale exactly so that waypoint distance is the zoom factor
     // across the screen
     _RequestedMapScale = LimitMapScale((fixed)Units::ToUserUnit(wpd / 4,
@@ -323,13 +308,12 @@ MapWindowProjection::UpdateMapScale(const DERIVED_INFO &DerivedDrawInfo,
   }
 
   if (settings_map.AutoZoom && positive(wpd)) {
-    if ((((settings_map.DisplayOrientation == NORTHTRACK)
+    if (((settings_map.DisplayOrientation == NORTHTRACK)
           && (DisplayMode != dmCircling))
          || (settings_map.DisplayOrientation == NORTHUP)
          || (((settings_map.DisplayOrientation == NORTHCIRCLE)
              || (settings_map.DisplayOrientation == TRACKCIRCLE))
-            && (DisplayMode == dmCircling)))
-        && !settings_map.TargetPan) {
+            && (DisplayMode == dmCircling))) {
       AutoZoomFactor = fixed(2.5);
     } else {
       AutoZoomFactor = fixed_four;
@@ -353,30 +337,13 @@ MapWindowProjection::UpdateMapScale(const DERIVED_INFO &DerivedDrawInfo,
       ModifyMapScale(settings_map);
     }
   }
-
-  // if there is an active waypoint
-#ifdef OLD_TASK // auto zoom
-  static int AutoMapScaleWaypointIndex = -1;
-  if (task.Valid()) {
-    int task_index = task.getWaypointIndex();
-
-    // if the current zoom focused waypoint has changed...
-    if (AutoMapScaleWaypointIndex != task_index) {
-      AutoMapScaleWaypointIndex = task_index;
-
-      // zoom back out to where we were before
-      if (StartingAutoMapScale> 0.0) {
-	_RequestedMapScale = StartingAutoMapScale;
-	ModifyMapScale(settings_map);
-      }
-
-      // reset search for new starting zoom level
-      StartingAutoMapScale = 0.0;
-    }
-  } else {
-    AutoMapScaleWaypointIndex = -1;
+  else if (TargetPanLast) {
+    _RequestedMapScale = TargetPanUnZoom;
+    ModifyMapScale(settings_map);
   }
-#endif
+
+  if (!settings_map.TargetPan && TargetPanLast)
+   TargetPanLast = false;
 }
 
 void

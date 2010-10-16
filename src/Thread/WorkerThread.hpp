@@ -39,14 +39,14 @@ Copyright_License {
 #ifndef XCSOAR_THREAD_WORKER_THREAD_HPP
 #define XCSOAR_THREAD_WORKER_THREAD_HPP
 
-#include "Thread/Thread.hpp"
+#include "Thread/StoppableThread.hpp"
 #include "Thread/Trigger.hpp"
 
 /**
  * A thread which performs regular work in background.
  */
-class WorkerThread : public Thread {
-  Trigger event_trigger, running, stop_trigger;
+class WorkerThread : public StoppableThread {
+  Trigger event_trigger, running;
 
 public:
   WorkerThread();
@@ -77,7 +77,7 @@ public:
    * synchronously for the thread to exit.
    */
   void stop() {
-    stop_trigger.trigger();
+    StoppableThread::stop();
     trigger();
     resume();
   }

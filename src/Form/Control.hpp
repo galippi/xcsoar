@@ -112,20 +112,24 @@ public:
    * @param font The new font
    * @return The old font
    */
-  virtual const Font *SetFont(const Font &font);
+  virtual void SetFont(const Font &font);
+
   /**
    * Sets the Control's font
    * @param font The new font
    * @return The old font
    */
-  const Font *SetFont(const Font *font) { return SetFont(*font); }
+  void SetFont(const Font *font) {
+    SetFont(*font);
+  }
 
   /**
    * Sets the Control's foreground color
    * @param Value The new foreground color
    * @return The old foreground color
    */
-  virtual Color SetForeColor(Color Value);
+  void SetForeColor(Color Value);
+
   /**
    * Return the Control's foreground color
    * @return The Control's foreground color
@@ -139,21 +143,13 @@ public:
    * @param Value The new background color
    * @return The old background color
    */
-  virtual Color SetBackColor(Color Value);
+  virtual void SetBackColor(Color Value);
   /**
    * Return the Control's background color
    * @return The Control's background color
    */
   Color GetBackColor() const {
     return mColorBack;
-  }
-
-  /**
-   * Returns the brush for painting the background
-   * @return The brush for painting the background
-   */
-  const Brush &GetBackBrush() const {
-    return mhBrushBk;
   }
 
   /**
@@ -189,9 +185,6 @@ private:
   Color mColorBack;
   /** Foreground color */
   Color mColorFore;
-
-  /** Brush for painting the background */
-  Brush mhBrushBk;
 
   /** Font of the Control */
   const Font *mhFont;

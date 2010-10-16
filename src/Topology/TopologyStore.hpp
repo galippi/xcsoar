@@ -40,7 +40,6 @@ Copyright_License {
 #define TOPOLOGY_STORE_H
 
 #include "Util/NonCopyable.hpp"
-#include "shapelib/mapshape.h"
 
 #include <tchar.h>
 
@@ -66,16 +65,12 @@ public:
   ~TopologyStore();
 
   void ScanVisibility(const Projection &m_projection);
-  void Reload();
   void Draw(Canvas &canvas, BitmapCanvas &bitmap_canvas,
             const Projection &projection) const;
   void DrawLabels(Canvas &canvas,
                   const Projection &projection, LabelBlock &label_block,
                   const SETTINGS_MAP &settings_map) const;
 
-private:
-  void Open();
-  void Close();
   void Load(NLineReader &reader, const TCHAR* Directory);
   void Reset();
 

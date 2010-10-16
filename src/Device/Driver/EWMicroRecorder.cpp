@@ -53,17 +53,23 @@ Copyright_License {
 #include <tchar.h>
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
+
+#ifdef _UNICODE
+#include <windows.h>
+#endif
 
 // Additional sentance for EW support
 
 class EWMicroRecorderDevice : public AbstractDevice {
 protected:
-  ComPort *port;
+  Port *port;
 
   char user_data[2500];
 
 public:
-  EWMicroRecorderDevice(ComPort *_port)
+  EWMicroRecorderDevice(Port *_port)
     :port(_port) {}
 
 protected:
@@ -76,7 +82,7 @@ public:
 };
 
 static bool
-ExpectStringWait(ComPort *port, const char *token)
+ExpectStringWait(Port *port, const char *token)
 {
   assert(port != NULL);
   assert(token != NULL);
@@ -179,7 +185,7 @@ EWMicroRecorderDevice::TryConnect()
 
 
 static void
-EWMicroRecorderPrintf(ComPort *port, const TCHAR *fmt, ...)
+EWMicroRecorderPrintf(Port *port, const TCHAR *fmt, ...)
 {
   TCHAR EWStr[128];
   va_list ap;
@@ -201,7 +207,7 @@ EWMicroRecorderPrintf(ComPort *port, const TCHAR *fmt, ...)
 }
 
 static void
-EWMicroRecorderWriteWayPoint(ComPort *port,
+EWMicroRecorderWriteWayPoint(Port *port,
                              const Waypoint &way_point, const TCHAR *EWType)
 {
   int DegLat, DegLon;
@@ -297,7 +303,7 @@ EWMicroRecorderDevice::Declare(const Declaration *decl)
 
 
 static Device *
-EWMicroRecorderCreateOnComPort(ComPort *com_port)
+EWMicroRecorderCreateOnPort(Port *com_port)
 {
   return new EWMicroRecorderDevice(com_port);
 }
@@ -305,5 +311,5 @@ EWMicroRecorderCreateOnComPort(ComPort *com_port)
 const struct DeviceRegister ewMicroRecorderDevice = {
   _T("EW MicroRecorder"),
   drfGPS | drfLogger | drfBaroAlt,
-  EWMicroRecorderCreateOnComPort,
+  EWMicroRecorderCreateOnPort,
 };

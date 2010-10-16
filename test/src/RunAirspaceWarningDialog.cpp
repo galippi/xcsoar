@@ -40,9 +40,8 @@ Copyright_License {
 #include "Interface.hpp"
 #include "Dialogs.h"
 #include "MapWindow.hpp"
-#include "InputEvents.h"
 #include "UtilsSystem.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "Airspace/ProtectedAirspaceWarningManager.hpp"
 #include "Airspace/AirspaceParser.hpp"
 #include "Airspace/AirspaceWarningManager.hpp"
@@ -66,12 +65,6 @@ int DisplayTimeOut = 0;
 #endif
 
 unsigned InfoBoxLayout::ControlWidth = 100;
-
-pt2Event
-InputEvents::findEvent(const TCHAR *)
-{
-  return NULL;
-}
 
 #ifndef ENABLE_SDL
 bool
@@ -126,7 +119,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
   LoadFiles();
 
-  Fonts::Initialize(false);
+  Fonts::Initialize();
 
   Airspaces::AirspaceTree::const_iterator it = airspace_database.begin();
 
@@ -141,7 +134,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   main_window.show();
 
   Layout::Initialize(640, 480);
-  Fonts::Initialize(Appearance.UseCustomFonts);
+
+  Fonts::Initialize();
+  if (Appearance.UseCustomFonts)
+    Fonts::LoadCustom();
 
   dlgAirspaceWarningInit(main_window);
   dlgAirspaceWarningShowDlg();

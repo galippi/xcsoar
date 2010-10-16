@@ -46,6 +46,8 @@ Copyright_License {
 #include "Device/Descriptor.hpp"
 #include "Device/Parser.hpp"
 #include "Device/Port.hpp"
+#include "Device/SerialPort.hpp"
+#include "Device/NullPort.hpp"
 #include "Thread/Mutex.hpp"
 #include "LogFile.hpp"
 #include "DeviceBlackboard.hpp"
@@ -53,7 +55,7 @@ Copyright_License {
 #include "Language.hpp"
 #include "Asset.hpp"
 #include "Simulator.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 
 #ifdef _WIN32_WCE
 #include "Config/Registry.hpp"
@@ -132,16 +134,11 @@ detect_gps(TCHAR *path, size_t path_max_size)
 #endif
 }
 
-static bool
-devInitOne(DeviceDescriptor &device, const DeviceConfig &config,
-           DeviceDescriptor *&nmeaout)
+static Port *
+OpenPort(const DeviceConfig &config, Port::Handler &handler)
 {
   if (is_simulator())
-    return false;
-
-  const struct DeviceRegister *Driver = devGetDriver(config.driver_name);
-  if (Driver == NULL)
-    return false;
+    return new NullPort(handler);
 
   const TCHAR *path = NULL;
   TCHAR buffer[MAX_PATH];
@@ -154,7 +151,7 @@ devInitOne(DeviceDescriptor &device, const DeviceConfig &config,
   case DeviceConfig::AUTO:
     if (!detect_gps(buffer, sizeof(buffer))) {
       LogStartUp(_T("no GPS detected"));
-      return false;
+      return NULL;
     }
 
     LogStartUp(_T("GPS detected: %s"), buffer);
@@ -164,14 +161,28 @@ devInitOne(DeviceDescriptor &device, const DeviceConfig &config,
   }
 
   if (path == NULL)
-    return false;
+    return NULL;
 
-  ComPort *Com = new ComPort(path, dwSpeed[config.speed_index],
-                             device);
+  SerialPort *Com = new SerialPort(path, dwSpeed[config.speed_index], handler);
   if (!Com->Open()) {
     delete Com;
-    return false;
+    return NULL;
   }
+
+  return Com;
+}
+
+static bool
+devInitOne(DeviceDescriptor &device, const DeviceConfig &config,
+           DeviceDescriptor *&nmeaout)
+{
+  const struct DeviceRegister *Driver = devGetDriver(config.driver_name);
+  if (Driver == NULL)
+    return false;
+
+  Port *Com = OpenPort(config, device);
+  if (Com == NULL)
+    return false;
 
   device.Driver = Driver;
   device.Com = Com;
@@ -277,7 +288,7 @@ HaveCondorDevice()
 
 #ifdef _UNICODE
 static void
-PortWriteNMEA(ComPort *port, const TCHAR *line)
+PortWriteNMEA(Port *port, const TCHAR *line)
 {
   assert(port != NULL);
   assert(line != NULL);
@@ -337,9 +348,6 @@ devShutdown()
 void
 devRestart()
 {
-  if (is_simulator())
-    return;
-
   LogStartUp(_T("RestartCommPorts"));
 
   ScopeLock protect(mutexComm);

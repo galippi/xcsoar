@@ -51,6 +51,7 @@ Copyright_License {
 #include "Waypoint/Waypoint.hpp"
 #include "Math/FastMath.h"
 
+#include <windows.h> /* for Sleep() */
 #include <tchar.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -136,14 +137,14 @@ struct cai302_Gdata_t {
  */
 class CAI302Device : public AbstractDevice {
 private:
-  ComPort *port;
+  Port *port;
 
   int MacCreadyUpdateTimeout;
   int BugsUpdateTimeout;
   int BallastUpdateTimeout;
 
 public:
-  CAI302Device(ComPort *_port)
+  CAI302Device(Port *_port)
     :port(_port),
      MacCreadyUpdateTimeout(0), BugsUpdateTimeout(0),
      BallastUpdateTimeout(0) {}
@@ -282,7 +283,7 @@ convert_string(char *dest, size_t size, const TCHAR *src)
 }
 
 static bool
-cai302DeclAddWayPoint(ComPort *port, const Waypoint &way_point)
+cai302DeclAddWayPoint(Port *port, const Waypoint &way_point)
 {
   int DegLat, DegLon;
   double tmp, MinLat, MinLon;
@@ -508,7 +509,7 @@ CAI302Device::Declare(const Declaration *decl)
 }
 
 static Device *
-CAI302CreateOnComPort(ComPort *com_port)
+CAI302CreateOnPort(Port *com_port)
 {
   return new CAI302Device(com_port);
 }
@@ -516,7 +517,7 @@ CAI302CreateOnComPort(ComPort *com_port)
 const struct DeviceRegister cai302Device = {
   _T("CAI 302"),
   drfGPS | drfLogger | drfSpeed | drfVario | drfWind,
-  CAI302CreateOnComPort,
+  CAI302CreateOnPort,
 };
 
 static bool

@@ -205,12 +205,33 @@ public:
   }
 
   void fill_rectangle(int left, int top, int right, int bottom,
+                      const HWColor color) {
+    if (left >= right || top >= bottom)
+      return;
+
+    SDL_Rect r = { left, top, right - left, bottom - top };
+    SDL_FillRect(surface, &r, color);
+  }
+
+  void fill_rectangle(int left, int top, int right, int bottom,
+                      const Color color) {
+    fill_rectangle(left, top, right, bottom, map(color));
+  }
+
+  void fill_rectangle(int left, int top, int right, int bottom,
                       const Brush &brush) {
     if (brush.is_hollow())
       return;
 
-    SDL_Rect r = { left, top, right - left, bottom - top };
-    SDL_FillRect(surface, &r, map(brush.get_color()));
+    fill_rectangle(left, top, right, bottom, brush.get_color());
+  }
+
+  void fill_rectangle(const RECT &rc, const HWColor color) {
+    fill_rectangle(rc.left, rc.top, rc.right, rc.bottom, color);
+  }
+
+  void fill_rectangle(const RECT &rc, const Color color) {
+    fill_rectangle(rc.left, rc.top, rc.right, rc.bottom, color);
   }
 
   void fill_rectangle(const RECT rc, const Brush &brush) {
@@ -221,12 +242,20 @@ public:
     rectangle(0, 0, surface->w, surface->h);
   }
 
+  void clear(const HWColor color) {
+    fill_rectangle(0, 0, surface->w, surface->h, color);
+  }
+
+  void clear(const Color color) {
+    fill_rectangle(0, 0, surface->w, surface->h, color);
+  }
+
   void clear(const Brush &brush) {
     fill_rectangle(0, 0, surface->w, surface->h, brush);
   }
 
   void clear_white() {
-    clear(Brush(Color::WHITE));
+    clear(Color::WHITE);
   }
 
   void round_rectangle(int left, int top, int right, int bottom,
@@ -346,11 +375,11 @@ public:
     // XXX
   }
 
-  void text_opaque(int x, int y, const RECT* lprc, const TCHAR *text);
+  void text_opaque(int x, int y, const RECT &rc, const TCHAR *text);
 
   void text_clipped(int x, int y, const RECT &rc, const TCHAR *text) {
     // XXX
-    text_opaque(x, y, &rc, text);
+    text_opaque(x, y, rc, text);
   }
 
   void text_clipped(int x, int y, unsigned width, const TCHAR *text) {
@@ -655,6 +684,33 @@ public:
     ::Rectangle(dc, left, top, right, bottom);
   }
 
+  void fill_rectangle(int left, int top, int right, int bottom,
+                      const HWColor color) {
+    RECT rc;
+    rc.left = left;
+    rc.top = top;
+    rc.right = right;
+    rc.bottom = bottom;
+
+    fill_rectangle(rc, color);
+  }
+
+  void fill_rectangle(int left, int top, int right, int bottom,
+                      const Color color) {
+    fill_rectangle(left, top, right, bottom, map(color));
+  }
+
+  void fill_rectangle(const RECT &rc, const HWColor color) {
+    /* this hack allows filling a rectangle with a solid color,
+       without the need to create a HBRUSH */
+    ::SetBkColor(dc, color);
+    ::ExtTextOut(dc, rc.left, rc.top, ETO_OPAQUE, &rc, _T(""), 0, NULL);
+  }
+
+  void fill_rectangle(const RECT &rc, const Color color) {
+    fill_rectangle(rc, map(color));
+  }
+
   void fill_rectangle(const RECT rc, const Brush &brush) {
     ::FillRect(dc, &rc, brush.native());
   }
@@ -671,6 +727,14 @@ public:
 
   void clear() {
     rectangle(0, 0, width, height);
+  }
+
+  void clear(const HWColor color) {
+    fill_rectangle(0, 0, width, height, color);
+  }
+
+  void clear(const Color color) {
+    fill_rectangle(0, 0, width, height, color);
   }
 
   void clear(const Brush &brush) {
@@ -751,7 +815,7 @@ public:
 
   void text(int x, int y, const TCHAR *text);
   void text(int x, int y, const TCHAR *text, size_t length);
-  void text_opaque(int x, int y, const RECT* lprc, const TCHAR *text);
+  void text_opaque(int x, int y, const RECT &rc, const TCHAR *text);
 
   void text_clipped(int x, int y, const RECT &rc, const TCHAR *text);
   void text_clipped(int x, int y, unsigned width, const TCHAR *text);

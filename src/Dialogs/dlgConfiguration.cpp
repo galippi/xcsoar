@@ -45,17 +45,18 @@ Copyright_License {
 #include "SettingsMap.hpp"
 #include "Appearance.hpp"
 #include "LocalPath.hpp"
-#include "ProfileKeys.hpp"
+#include "Profile/ProfileKeys.hpp"
+#include "Profile/DisplayConfig.hpp"
 #include "Logger/Logger.hpp"
 #include "Device/Register.hpp"
 #include "Device/List.hpp"
 #include "Device/Descriptor.hpp"
 #include "Screen/Busy.hpp"
 #include "Screen/Blank.hpp"
-#include "Screen/CheckBox.hpp"
+#include "Form/CheckBox.hpp"
 #include "Screen/Layout.hpp"
 #include "MainWindow.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "LocalTime.hpp"
 #include "Math/FastMath.h"
 #include "Polar/BuiltIn.hpp"
@@ -65,30 +66,25 @@ Copyright_License {
 #include "DataField/Enum.hpp"
 #include "DataField/FileReader.hpp"
 #include "Asset.hpp"
-#include "Screen/Fonts.hpp"
 #include "GlideRatio.hpp"
 #include "Components.hpp"
-#include "Waypoint/Waypoints.hpp"
 #include "WayPointFile.hpp"
-#include "WayPoint/WayPointGlue.hpp"
 #include "StringUtil.hpp"
 #include "Simulator.hpp"
 #include "Compiler.h"
 #include "Screen/Graphics.hpp"
 #include "InfoBoxes/InfoBoxLayout.hpp"
-#include "InfoBoxes/Content/Factory.hpp"
 #include "Pages.hpp"
+#include "Hardware/Display.hpp"
+#include "OS/PathName.hpp"
 
 #include <assert.h>
-
-enum {
-  ID_USER_LEVEL = 100,
-};
 
 enum config_page {
   PAGE_SITE,
   PAGE_AIRSPACE,
   PAGE_MAP,
+  PAGE_SYMBOLS,
   PAGE_TERRAIN,
   PAGE_GLIDE_COMPUTER,
   PAGE_SAFETY_FACTORS,
@@ -97,15 +93,11 @@ enum config_page {
   PAGE_UNITS,
   PAGE_INTERFACE,
   PAGE_APPEARANCE,
-  PAGE_FONTS,
+  PAGE_LAYOUT,
   PAGE_VARIO,
   PAGE_TASK_RULES,
-  PAGE_INFOBOX_CIRCLING,
-  PAGE_INFOBOX_CRUISE,
-  PAGE_INFOBOX_FINAL,
-  PAGE_INFOBOX_AUXILIARY,
+  PAGE_INFOBOXES,
   PAGE_LOGGER,
-  PAGE_WAYPOINTS,
   PAGE_PAGES,
   PAGE_EXPERIMENTAL,
 };
@@ -114,6 +106,7 @@ static const TCHAR *const captions[] = {
   N_("Site"),
   N_("Airspace"),
   N_("Map Display"),
+  N_("Symbols"),
   N_("Terrain Display"),
   N_("Glide Computer"),
   N_("Safety factors"),
@@ -122,15 +115,11 @@ static const TCHAR *const captions[] = {
   N_("Units"),
   N_("Interface"),
   N_("Appearance"),
-  N_("Fonts"),
+  N_("Layout"),
   N_("FLARM and other gauges"),
   N_("Default task rules"),
-  N_("InfoBox Circling"),
-  N_("InfoBox Cruise"),
-  N_("InfoBox Final Glide"),
-  N_("InfoBox Auxiliary"),
+  N_("InfoBoxes"),
   N_("Logger"),
-  N_("Waypoint Edit"),
   N_("Pages"),
   N_("Experimental features"),
 };
@@ -148,39 +137,20 @@ static const struct {
 static const unsigned num_port_types =
   sizeof(port_types) / sizeof(port_types[0]) - 1;
 
-static Font TempInfoWindowFont;
-static Font TempTitleWindowFont;
-static Font TempMapWindowFont;
-static Font TempTitleSmallWindowFont;
-static Font TempMapWindowBoldFont;
-static Font TempCDIWindowFont; // New
-static Font TempMapLabelFont;
-
-extern LOGFONT LogInfoBox;
-extern LOGFONT LogTitle;
-extern LOGFONT LogMap;
-extern LOGFONT LogInfoBoxSmall;
-extern LOGFONT LogMapBold;
-extern LOGFONT LogCDI; // New
-extern LOGFONT LogMapLabel;
-
 static bool changed = false;
 static bool taskchanged = false;
 static bool requirerestart = false;
 static bool utcchanged = false;
 static bool waypointneedsave = false;
-static bool FontRegistryChanged=false;
 static config_page current_page;
 static WndForm *wf = NULL;
-static CheckBox *user_level;
 TabbedControl *configuration_tabbed;
 static WndButton *buttonPilotName = NULL;
 static WndButton *buttonAircraftType = NULL;
 static WndButton *buttonAircraftRego = NULL;
 static WndButton *buttonLoggerID = NULL;
-static WndButton *buttonCopy = NULL;
-static WndButton *buttonPaste = NULL;
-static WndListFrame* PagesList = NULL;
+static WndButton *buttonFonts = NULL;
+static WndButton *buttonWaypoints = NULL;
 
 static void
 UpdateButtons(void)
@@ -221,15 +191,6 @@ UpdateButtons(void)
   }
 }
 
-static bool
-is_infobox_page(config_page page)
-{
-  return page == PAGE_INFOBOX_CIRCLING ||
-    page == PAGE_INFOBOX_CRUISE ||
-    page == PAGE_INFOBOX_FINAL ||
-    page == PAGE_INFOBOX_AUXILIARY;
-}
-
 static void
 PageSwitched()
 {
@@ -241,11 +202,11 @@ PageSwitched()
              gettext(captions[(unsigned)current_page]));
   wf->SetCaption(caption);
 
-  if (buttonCopy != NULL)
-    buttonCopy->set_visible(is_infobox_page(current_page));
+  if (buttonFonts != NULL)
+    buttonFonts->set_visible(current_page == PAGE_INTERFACE);
 
-  if (buttonPaste != NULL)
-    buttonPaste->set_visible(is_infobox_page(current_page));
+  if (buttonWaypoints != NULL)
+    buttonWaypoints->set_visible(current_page == PAGE_SITE);
 }
 
 static void
@@ -300,46 +261,19 @@ UpdateDeviceSetupButton(unsigned DeviceIdx, const TCHAR *Name)
     wb->set_visible(Name != NULL && _tcscmp(Name, _T("Vega")) == 0);
 }
 
-static Window *
-OnCreateUserLevel(ContainerWindow &parent, int left, int top,
-                  unsigned width, unsigned height,
-                  const WindowStyle _style)
+static void
+OnUserLevel(CheckBoxControl &control)
 {
-  CheckBoxStyle style(_style);
-  style.tab_stop();
-  user_level = new CheckBox();
-  user_level->set(parent, _("Expert"), ID_USER_LEVEL,
-                  left, top, width, height, style);
-  user_level->set_font(Fonts::Map);
-  user_level->set_checked(XCSoarInterface::UserLevel > 0);
-  return user_level;
-}
-
-static bool
-OnCommand(unsigned id)
-{
-  switch (id) {
-  case ID_USER_LEVEL:
-    if ((int)user_level->get_checked() != (int)XCSoarInterface::UserLevel) {
-      XCSoarInterface::UserLevel = (int)user_level->get_checked();
-      changed = true;
-      Profile::Set(szProfileUserLevel,(int)XCSoarInterface::UserLevel);
-      wf->FilterAdvanced(XCSoarInterface::UserLevel>0);
-    }
-    return true;
-
-  default:
-    return false;
-  }
+  XCSoarInterface::UserLevel = (int)control.get_checked();
+  changed = true;
+  Profile::Set(szProfileUserLevel,(int)XCSoarInterface::UserLevel);
+  wf->FilterAdvanced(XCSoarInterface::UserLevel>0);
 }
 
 static void
 OnDeviceAData(DataField *Sender, DataField::DataAccessKind_t Mode)
 {
   switch (Mode) {
-  case DataField::daGet:
-    break;
-  case DataField::daPut:
   case DataField::daChange:
     UpdateDeviceSetupButton(0, Sender->GetAsString());
     break;
@@ -350,229 +284,9 @@ static void
 OnDeviceBData(DataField *Sender, DataField::DataAccessKind_t Mode)
 {
   switch (Mode) {
-  case DataField::daGet:
-    break;
-  case DataField::daPut:
   case DataField::daChange:
     UpdateDeviceSetupButton(1, Sender->GetAsString());
     break;
-  }
-}
-
-static void
-ResetFonts(bool bUseCustom)
-{
-  if (bUseCustom) {
-    Fonts::LoadCustomFont(&TempInfoWindowFont, szProfileFontInfoWindowFont);
-    Fonts::LoadCustomFont(&TempTitleWindowFont, szProfileFontTitleWindowFont);
-    Fonts::LoadCustomFont(&TempMapWindowFont, szProfileFontMapWindowFont);
-    Fonts::LoadCustomFont(&TempTitleSmallWindowFont,
-        szProfileFontTitleSmallWindowFont);
-    Fonts::LoadCustomFont(&TempMapWindowBoldFont,
-        szProfileFontMapWindowBoldFont);
-    Fonts::LoadCustomFont(&TempCDIWindowFont, szProfileFontCDIWindowFont);
-    Fonts::LoadCustomFont(&TempMapLabelFont, szProfileFontMapLabelFont);
-  }
-
-  Fonts::SetFont(&TempInfoWindowFont, LogInfoBox);
-  Fonts::SetFont(&TempTitleWindowFont, LogTitle);
-  Fonts::SetFont(&TempMapWindowFont, LogMap);
-  Fonts::SetFont(&TempTitleSmallWindowFont, LogInfoBoxSmall);
-  Fonts::SetFont(&TempMapWindowBoldFont, LogMapBold);
-  Fonts::SetFont(&TempCDIWindowFont, LogCDI);
-  Fonts::SetFont(&TempMapLabelFont, LogMapLabel);
-}
-
-static void
-ShowFontEditButtons(bool bVisible)
-{
-  WndProperty * wp;
-  wp = (WndProperty*)wf->FindByName(_T("cmdInfoWindowFont"));
-  if (wp)
-    wp->set_visible(bVisible);
-
-  wp = (WndProperty*)wf->FindByName(_T("cmdTitleWindowFont"));
-  if (wp)
-    wp->set_visible(bVisible);
-
-  wp = (WndProperty*)wf->FindByName(_T("cmdMapWindowFont"));
-  if (wp)
-    wp->set_visible(bVisible);
-
-  wp = (WndProperty*)wf->FindByName(_T("cmdTitleSmallWindowFont"));
-  if (wp)
-    wp->set_visible(bVisible);
-
-  wp = (WndProperty*)wf->FindByName(_T("cmdMapWindowBoldFont"));
-  if (wp)
-    wp->set_visible(bVisible);
-
-  wp = (WndProperty*)wf->FindByName(_T("cmdCDIWindowFont"));
-  if (wp)
-    wp->set_visible(bVisible);
-
-  wp = (WndProperty*)wf->FindByName(_T("cmdMapLabelFont"));
-  if (wp)
-    wp->set_visible(bVisible);
-}
-
-static void
-RefreshFonts(void)
-{
-  WndProperty * wp;
-
-  wp = (WndProperty*)wf->FindByName(_T("prpUseCustomFonts"));
-  if (wp) {
-    bool bUseCustomFonts =
-        ((DataFieldBoolean*)(wp->GetDataField()))->GetAsBoolean();
-    ResetFonts(bUseCustomFonts);
-    ShowFontEditButtons(bUseCustomFonts);
-  }
-
-  // now set SampleTexts on the Fonts frame
-  WndFrame *sample;
-
-  sample = (WndFrame *)wf->FindByName(_T("prpInfoWindowFont"));
-  if (sample)
-    sample->SetFont(TempInfoWindowFont);
-
-  sample = (WndFrame *)wf->FindByName(_T("prpTitleWindowFont"));
-  if (sample)
-    sample->SetFont(TempTitleWindowFont);
-
-  sample = (WndFrame *)wf->FindByName(_T("prpMapWindowFont"));
-  if (sample)
-    sample->SetFont(TempMapWindowFont);
-
-  sample = (WndFrame *)wf->FindByName(_T("prpTitleSmallWindowFont"));
-  if (sample)
-    sample->SetFont(TempTitleSmallWindowFont);
-
-  sample = (WndFrame *)wf->FindByName(_T("prpMapWindowBoldFont"));
-  if (sample)
-    sample->SetFont(TempMapWindowBoldFont);
-
-  sample = (WndFrame *)wf->FindByName(_T("prpCDIWindowFont"));
-  if (sample)
-    sample->SetFont(TempCDIWindowFont);
-
-  sample = (WndFrame *)wf->FindByName(_T("prpMapLabelFont"));
-  if (sample)
-    sample->SetFont(TempMapLabelFont);
-
-  // now fix the rest of the dlgConfiguration fonts:
-  wf->SetFont(TempMapWindowBoldFont);
-  wf->SetTitleFont(TempMapWindowBoldFont);
-}
-
-static void
-OnUseCustomFontData(DataField *Sender, DataField::DataAccessKind_t Mode)
-{
-  switch (Mode) {
-  case DataField::daGet:
-    break;
-
-  case DataField::daPut:
-    break;
-
-  case DataField::daChange:
-    RefreshFonts();
-
-    break;
-  }
-}
-
-static void
-GetFontDescription(TCHAR Description[], const TCHAR * prpName, int iMaxLen)
-{
-  const WndFrame *wp = (WndFrame *)wf->FindByName(prpName);
-  if (wp)
-    _tcsncpy(Description, wp->GetCaption(), iMaxLen - 1);
-}
-
-static void
-OnEditInfoWindowFontClicked(gcc_unused WndButton &button)
-{
-  // updates registry for font info and updates LogFont values
-#define MAX_EDITFONT_DESC_LEN 100
-  TCHAR FontDesc[MAX_EDITFONT_DESC_LEN];
-  GetFontDescription(FontDesc, _T("prpInfoWindowFont"), MAX_EDITFONT_DESC_LEN);
-  if (dlgFontEditShowModal(FontDesc, szProfileFontInfoWindowFont,
-                           LogInfoBox)) {
-    FontRegistryChanged = true;
-    RefreshFonts();
-  }
-}
-
-static void
-OnEditTitleWindowFontClicked(gcc_unused WndButton &button)
-{
-  TCHAR FontDesc[MAX_EDITFONT_DESC_LEN];
-  GetFontDescription(FontDesc, _T("prpTitleWindowFont"), MAX_EDITFONT_DESC_LEN);
-  if (dlgFontEditShowModal(FontDesc, szProfileFontTitleWindowFont,
-                           LogTitle)) {
-    FontRegistryChanged = true;
-    RefreshFonts();
-  }
-}
-
-static void
-OnEditMapWindowFontClicked(gcc_unused WndButton &button)
-{
-  TCHAR FontDesc[MAX_EDITFONT_DESC_LEN];
-  GetFontDescription(FontDesc, _T("prpMapWindowFont"), MAX_EDITFONT_DESC_LEN);
-  if (dlgFontEditShowModal(FontDesc, szProfileFontMapWindowFont,
-                           LogMap)) {
-    FontRegistryChanged = true;
-    RefreshFonts();
-  }
-}
-
-static void
-OnEditTitleSmallWindowFontClicked(gcc_unused WndButton &button)
-{
-  TCHAR FontDesc[MAX_EDITFONT_DESC_LEN];
-  GetFontDescription(FontDesc, _T("prpTitleSmallWindowFont"), MAX_EDITFONT_DESC_LEN);
-  if (dlgFontEditShowModal(FontDesc, szProfileFontTitleSmallWindowFont,
-                           LogInfoBoxSmall)) {
-    FontRegistryChanged = true;
-    RefreshFonts();
-  }
-}
-
-static void
-OnEditMapWindowBoldFontClicked(gcc_unused WndButton &button)
-{
-  TCHAR FontDesc[MAX_EDITFONT_DESC_LEN];
-  GetFontDescription(FontDesc, _T("prpMapWindowBoldFont"), MAX_EDITFONT_DESC_LEN);
-  if (dlgFontEditShowModal(FontDesc, szProfileFontMapWindowBoldFont,
-                           LogMapBold)) {
-    FontRegistryChanged = true;
-    RefreshFonts();
-  }
-}
-
-static void
-OnEditCDIWindowFontClicked(gcc_unused WndButton &button)
-{
-  TCHAR FontDesc[MAX_EDITFONT_DESC_LEN];
-  GetFontDescription(FontDesc, _T("prpCDIWindowFont"), MAX_EDITFONT_DESC_LEN);
-  if (dlgFontEditShowModal(FontDesc, szProfileFontCDIWindowFont,
-                           LogCDI)) {
-    FontRegistryChanged = true;
-    RefreshFonts();
-  }
-}
-
-static void
-OnEditMapLabelFontClicked(gcc_unused WndButton &button)
-{
-  TCHAR FontDesc[MAX_EDITFONT_DESC_LEN];
-  GetFontDescription(FontDesc, _T("prpMapLabelFont"), MAX_EDITFONT_DESC_LEN);
-  if (dlgFontEditShowModal(FontDesc, szProfileFontMapLabelFont,
-                           LogMapLabel)) {
-    FontRegistryChanged = true;
-    RefreshFonts();
   }
 }
 
@@ -665,83 +379,40 @@ OnCloseClicked(gcc_unused WndButton &button)
   wf->SetModalResult(mrOK);
 }
 
-static int cpyInfoBox[10];
-
-static const TCHAR *
-page2mode(config_page page)
+static void
+OnInfoBoxesCircling(gcc_unused WndButton &button)
 {
-  switch (page) {
-  case PAGE_INFOBOX_CIRCLING:
-    return _T("Circling");
-
-  case PAGE_INFOBOX_CRUISE:
-    return _T("Cruise");
-
-  case PAGE_INFOBOX_FINAL:
-    return _T("FinalGlide");
-
-  case PAGE_INFOBOX_AUXILIARY:
-    return _T("Aux");
-
-  default:
-    return NULL;
-  }
-}
-
-static const TCHAR *const info_box_mode_names[] = {
-  _T("Circling"),
-  _T("Cruise"),
-  _T("FinalGlide"),
-  _T("Aux"),
-};
-
-static void InfoBoxPropName(TCHAR *name, int item, const TCHAR *mode) {
-  _stprintf(name, _T("prpInfoBox%s%1d"), mode, item);
-}
-
-static WndProperty *
-FindInfoBoxField(const TCHAR *mode, int item)
-{
-  TCHAR name[80];
-  InfoBoxPropName(name, item, mode);
-  return (WndProperty*)wf->FindByName(name);
+  dlgConfigInfoboxesShowModal(InfoBoxManager::MODE_CIRCLING);
 }
 
 static void
-OnCopy(gcc_unused WndButton &button)
+OnInfoBoxesCruise(gcc_unused WndButton &button)
 {
-  const TCHAR *mode = page2mode(current_page);
-  if (mode == NULL)
-    return;
-
-  for (unsigned item = 0; item < InfoBoxLayout::numInfoWindows; item++) {
-    WndProperty *wp = FindInfoBoxField(mode, item);
-    if (wp)
-      cpyInfoBox[item] = wp->GetDataField()->GetAsInteger();
-  }
+  dlgConfigInfoboxesShowModal(InfoBoxManager::MODE_CRUISE);
 }
 
 static void
-OnPaste(gcc_unused WndButton &button)
+OnInfoBoxesFinalGlide(gcc_unused WndButton &button)
 {
-  const TCHAR *mode = page2mode(current_page);
-  if (mode == NULL)
-    return;
+  dlgConfigInfoboxesShowModal(InfoBoxManager::MODE_FINAL_GLIDE);
+}
 
-  if(MessageBoxX(_("Overwrite?"),
-                 _("InfoBox paste"),
-                 MB_YESNO | MB_ICONQUESTION) != IDYES)
-    return;
+static void
+OnInfoBoxesAuxiliary(gcc_unused WndButton &button)
+{
+  dlgConfigInfoboxesShowModal(InfoBoxManager::MODE_AUXILIARY);
+}
 
-  for (unsigned item = 0; item < InfoBoxLayout::numInfoWindows; item++) {
-    WndProperty *wp = FindInfoBoxField(mode, item);
-    if (wp &&
-        cpyInfoBox[item] >= 0 &&
-        (unsigned)cpyInfoBox[item] < InfoBoxFactory::NUM_TYPES) {
-      wp->GetDataField()->Set(cpyInfoBox[item]);
-      wp->RefreshDisplay();
-    }
-  }
+static void
+OnFonts(gcc_unused WndButton &button)
+{
+  dlgConfigFontsShowModal();
+}
+
+static void
+OnWaypoints(gcc_unused WndButton &button)
+{
+  dlgConfigWaypointsShowModal();
 }
 
 static bool
@@ -790,9 +461,6 @@ OnUTCData(DataField *Sender, DataField::DataAccessKind_t Mode)
   int ival;
 
   switch(Mode){
-  case DataField::daGet:
-    break;
-  case DataField::daPut:
   case DataField::daChange:
     ival = iround(Sender->GetAsFixed() * 3600);
     if (XCSoarInterface::SettingsComputer().UTCOffset != ival) {
@@ -812,9 +480,6 @@ OnPolarFileData(DataField *Sender, DataField::DataAccessKind_t Mode)
   WndProperty* wp;
 
   switch(Mode){
-  case DataField::daGet:
-    break;
-  case DataField::daPut:
   case DataField::daChange:
     if (Sender->GetAsString() != NULL && _tcscmp(Sender->GetAsString(), _T("")) != 0){
       // then ... set Polar Tape to Winpilot
@@ -834,9 +499,6 @@ OnPolarTypeData(DataField *Sender, DataField::DataAccessKind_t Mode)
   WndProperty* wp;
 
   switch(Mode){
-  case DataField::daGet:
-    break;
-  case DataField::daPut:
   case DataField::daChange:
     wp = (WndProperty *)wf->FindByName(_T("prpPolarFile"));
 
@@ -859,118 +521,7 @@ OnPolarTypeData(DataField *Sender, DataField::DataAccessKind_t Mode)
 
 extern void OnInfoBoxHelp(WindowControl * Sender);
 
-static void
-OnWaypointNewClicked(WindowControl * Sender)
-{
-  (void)Sender;
-
-  Waypoint edit_waypoint = way_points.create(XCSoarInterface::Basic().Location);
-  if (dlgWaypointEditShowModal(edit_waypoint)) {
-    if (edit_waypoint.Name.size()) {
-      way_points.append(edit_waypoint);
-      waypointneedsave = true;
-    }
-  }
-}
-
-static void
-OnWaypointEditClicked(WindowControl * Sender)
-{
-  (void)Sender;
-
-  const Waypoint *way_point = dlgWayPointSelect(XCSoarInterface::main_window,
-                                                XCSoarInterface::Basic().Location);
-  if (way_point){
-    if (way_points.get_writable(*way_point)) {
-      Waypoint wp_copy = *way_point;
-      if (dlgWaypointEditShowModal(wp_copy)) {
-        waypointneedsave = true;
-        way_points.replace(*way_point, wp_copy);
-      }
-    } else {
-      MessageBoxX(_("Waypoint not editable"), _T("Error"), MB_OK);
-    }
-  }
-}
-
-static void
-AskWaypointSave(void)
-{
-  /// @todo terrain check???
-  if (WayPointFile::WaypointsOutOfRangeSetting != 2 ||
-      MessageBoxX(_("Waypoints excluded, save anyway?"),
-                  _("Waypoints outside terrain"),
-                  MB_YESNO | MB_ICONQUESTION) == IDYES) {
-    WayPointGlue::SaveWaypoints(way_points);
-    WaypointFileChanged= true;
-    changed = true;
-  }
-
-  waypointneedsave = false;
-}
-
-static void
-OnWaypointSaveClicked(WindowControl * Sender)
-{
-  (void)Sender;
-
-  AskWaypointSave();
-}
-
-static void
-OnWaypointDeleteClicked(WindowControl * Sender)
-{
-  (void)Sender;
-#ifdef OLD_TASK
-  int res;
-  res = dlgWayPointSelect(XCSoarInterface::Basic().Location);
-  if (res != -1){
-    if(MessageBoxX(way_points.get(res).Name,
-                   _("Delete Waypoint?"),
-                   MB_YESNO|MB_ICONQUESTION) == IDYES) {
-
-      way_points.set(res).FileNum = -1;
-      waypointneedsave = true;
-    }
-  }
-#endif
-}
-
-void
-OnInfoBoxHelp(WindowControl * Sender)
-{
-  WndProperty *wp = (WndProperty*)Sender;
-  int type = wp->GetDataField()->GetAsInteger();
-  TCHAR caption[100];
-  const TCHAR *mode;
-  switch (configuration_tabbed->GetCurrentPage()) {
-  case PAGE_INFOBOX_CIRCLING:
-    mode = _("circling");
-    break;
-  case PAGE_INFOBOX_CRUISE:
-    mode = _("cruise");
-    break;
-  case PAGE_INFOBOX_FINAL:
-    mode = _("final glide");
-    break;
-  case PAGE_INFOBOX_AUXILIARY:
-    mode = _("auxiliary");
-    break;
-  default:
-    return;
-  }
-  _stprintf(caption, _T("InfoBox %s in %s mode: %s"), wp->GetCaption(), mode,
-            InfoBoxFactory::GetName(type));
-
-  const TCHAR* text = InfoBoxFactory::GetDescription(type);
-  if (text)
-    dlgHelpShowModal(XCSoarInterface::main_window, caption, gettext(text));
-  else
-    dlgHelpShowModal(XCSoarInterface::main_window, caption,
-                     _("No help available on this item"));
-}
-
-static CallBackTableEntry_t CallBackTable[] = {
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnAirspaceColoursClicked),
   DeclareCallBackEntry(OnAirspaceModeClicked),
   DeclareCallBackEntry(OnUTCData),
@@ -979,61 +530,13 @@ static CallBackTableEntry_t CallBackTable[] = {
   DeclareCallBackEntry(OnSetupDeviceAClicked),
   DeclareCallBackEntry(OnSetupDeviceBClicked),
   DeclareCallBackEntry(OnInfoBoxHelp),
-  DeclareCallBackEntry(OnWaypointNewClicked),
-  DeclareCallBackEntry(OnWaypointDeleteClicked),
-  DeclareCallBackEntry(OnWaypointEditClicked),
-  DeclareCallBackEntry(OnWaypointSaveClicked),
   DeclareCallBackEntry(OnPolarFileData),
   DeclareCallBackEntry(OnPolarTypeData),
   DeclareCallBackEntry(OnDeviceAData),
   DeclareCallBackEntry(OnDeviceBData),
-  DeclareCallBackEntry(OnUseCustomFontData),
-  DeclareCallBackEntry(OnEditInfoWindowFontClicked),
-  DeclareCallBackEntry(OnEditTitleWindowFontClicked),
-  DeclareCallBackEntry(OnEditMapWindowFontClicked),
-  DeclareCallBackEntry(OnEditTitleSmallWindowFontClicked),
-  DeclareCallBackEntry(OnEditMapWindowBoldFontClicked),
-  DeclareCallBackEntry(OnEditCDIWindowFontClicked),
-  DeclareCallBackEntry(OnEditMapLabelFontClicked),
-  DeclareCallBackEntry(OnCreateUserLevel),
+  DeclareCallBackEntry(OnUserLevel),
   DeclareCallBackEntry(NULL)
 };
-
-static void
-SetInfoBoxSelector(unsigned item, int mode)
-{
-  WndProperty *wp = FindInfoBoxField(info_box_mode_names[mode], item);
-  if (wp == NULL)
-    return;
-
-  DataFieldEnum* dfe;
-  dfe = (DataFieldEnum*)wp->GetDataField();
-  for (unsigned i = 0; i < InfoBoxFactory::NUM_TYPES; i++)
-    dfe->addEnumText(gettext(InfoBoxManager::GetTypeDescription(i)));
-
-  dfe->Sort(0);
-
-  dfe->Set(InfoBoxManager::getType(item, mode));
-  wp->RefreshDisplay();
-}
-
-static void
-GetInfoBoxSelector(unsigned item, int mode)
-{
-  WndProperty *wp = FindInfoBoxField(info_box_mode_names[mode], item);
-  if (wp == NULL)
-    return;
-
-  int itnew = wp->GetDataField()->GetAsInteger();
-  int it = InfoBoxManager::getType(item, mode);
-
-  if (it == itnew)
-    return;
-
-  changed = true;
-  InfoBoxManager::setType(item, itnew, mode);
-  Profile::SetInfoBoxes(item, InfoBoxManager::getTypeAll(item));
-}
 
 static DeviceConfig device_config[NUMDEV];
 static int dwDeviceIndex1 = 0;
@@ -1169,13 +672,13 @@ setVariables()
   if (buttonLoggerID)
     buttonLoggerID->SetOnClickNotify(OnLoggerIDClicked);
 
-  buttonCopy = ((WndButton *)wf->FindByName(_T("cmdCopy")));
-  if (buttonCopy)
-    buttonCopy->SetOnClickNotify(OnCopy);
+  buttonFonts = ((WndButton *)wf->FindByName(_T("cmdFonts")));
+  if (buttonFonts)
+    buttonFonts->SetOnClickNotify(OnFonts);
 
-  buttonPaste = ((WndButton *)wf->FindByName(_T("cmdPaste")));
-  if (buttonPaste)
-    buttonPaste->SetOnClickNotify(OnPaste);
+  buttonWaypoints = ((WndButton *)wf->FindByName(_T("cmdWaypoints")));
+  if (buttonWaypoints)
+    buttonWaypoints->SetOnClickNotify(OnWaypoints);
 
   UpdateButtons();
 
@@ -1317,7 +820,7 @@ setVariables()
     dfe = (DataFieldEnum*)wp->GetDataField();
     dfe->addEnumText(_("Arrow head"));
     dfe->addEnumText(_("Full arrow"));
-    wp->GetDataField()->Set(XCSoarInterface::SettingsMap().WindArrowStyle);
+    dfe->Set(XCSoarInterface::SettingsMap().WindArrowStyle);
     wp->RefreshDisplay();
   }
 
@@ -1329,7 +832,7 @@ setVariables()
     dfe->addEnumText(_("Circling"));
     dfe->addEnumText(_("ZigZag"));
     dfe->addEnumText(_("Both"));
-    wp->GetDataField()->Set(settings_computer.AutoWindMode);
+    dfe->Set(settings_computer.AutoWindMode);
     wp->RefreshDisplay();
   }
 
@@ -1338,27 +841,14 @@ setVariables()
     DataFieldEnum* dfe;
     dfe = (DataFieldEnum*)wp->GetDataField();
     dfe->addEnumText(_("Final glide"));
-    dfe->addEnumText(_("Average climb"));
+    dfe->addEnumText(_("Trending Average climb"));
     dfe->addEnumText(_("Both"));
-    wp->GetDataField()->Set((int)settings_computer.auto_mc_mode);
-    wp->RefreshDisplay();
-  }
-
-  wp = (WndProperty*)wf->FindByName(_T("prpWaypointsOutOfRange"));
-  if (wp) {
-    DataFieldEnum* dfe;
-    dfe = (DataFieldEnum*)wp->GetDataField();
-    dfe->addEnumText(_("Ask"));
-    dfe->addEnumText(_("Include"));
-    dfe->addEnumText(_("Exclude"));
-    wp->GetDataField()->Set(WayPointFile::WaypointsOutOfRangeSetting);
+    dfe->Set((int)settings_computer.auto_mc_mode);
     wp->RefreshDisplay();
   }
 
   LoadFormProperty(*wf, _T("prpBlockSTF"),
                    settings_computer.EnableBlockSTF);
-  LoadFormProperty(*wf, _T("prpFAIFinishHeight"),
-                   settings_computer.ordered_defaults.fai_finish);
 
   wp = (WndProperty*)wf->FindByName(_T("prpOLCRules"));
   if (wp) {
@@ -1481,7 +971,8 @@ setVariables()
 
   LoadFormProperty(*wf, _T("prpTrailDrift"),
                    XCSoarInterface::SettingsMap().EnableTrailDrift);
-
+  LoadFormProperty(*wf, _T("prpDetourCostMarker"),
+                   XCSoarInterface::SettingsMap().EnableDetourCostMarker);
   LoadFormProperty(*wf, _T("prpSetSystemTimeFromGPS"),
                    XCSoarInterface::SettingsMap().SetSystemTimeFromGPS);
   LoadFormProperty(*wf, _T("prpIgnoreNMEAChecksum"),
@@ -1505,18 +996,6 @@ setVariables()
     dfe->addEnumText(_("Short"));
     dfe->addEnumText(_("Full"));
     dfe->Set(XCSoarInterface::SettingsMap().TrailActive);
-    wp->RefreshDisplay();
-  }
-
-  // VENTA3 VisualGlide
-  wp = (WndProperty*)wf->FindByName(_T("prpVGlide"));
-  if (wp) {
-    DataFieldEnum* dfe;
-    dfe = (DataFieldEnum*)wp->GetDataField();
-    dfe->addEnumText(_("Off"));
-    dfe->addEnumText(_("Steady"));
-    dfe->addEnumText(_("Moving"));
-    dfe->Set(XCSoarInterface::SettingsMap().VisualGlide);
     wp->RefreshDisplay();
   }
 
@@ -1567,8 +1046,48 @@ setVariables()
                 szProfileTopologyFile, _T("*.tpl\0"));
   InitFileField(*wf, _T("prpAirfieldFile"),
                 szProfileAirfieldFile, _T("*.txt\0"));
-  InitFileField(*wf, _T("prpLanguageFile"),
-                szProfileLanguageFile, _T("*.mo\0"));
+
+  wp = (WndProperty *)wf->FindByName(_T("prpLanguageFile"));
+  if (wp != NULL) {
+    DataFieldEnum &df = *(DataFieldEnum *)wp->GetDataField();
+    df.addEnumText(_("Automatic"));
+    df.addEnumText(_("None"));
+
+#ifdef HAVE_BUILTIN_LANGUAGES
+    for (const struct builtin_language *l = language_table;
+         l->resource != NULL; ++l)
+      df.addEnumText(l->resource);
+#endif
+
+    DataFieldFileReader files(NULL);
+    files.ScanDirectoryTop(_T("*.mo"));
+    for (unsigned i = 0; i < files.size(); ++i) {
+      const TCHAR *path = files.getItem(i);
+      if (path == NULL)
+        continue;
+
+      path = BaseName(path);
+      if (path != NULL && df.Find(path) < 0)
+        df.addEnumText(path);
+    }
+
+    df.Sort(2);
+
+    TCHAR value[MAX_PATH];
+    if (!Profile::GetPath(szProfileLanguageFile, value))
+      value[0] = _T('\0');
+
+    if (_tcscmp(value, _T("none")) == 0)
+      df.Set(1);
+    else if (!string_is_empty(value) && _tcscmp(value, _T("auto")) != 0) {
+      const TCHAR *base = BaseName(value);
+      if (base != NULL)
+        df.SetAsString(base);
+    }
+
+    wp->RefreshDisplay();
+  }
+
   InitFileField(*wf, _T("prpStatusFile"),
                 szProfileStatusFile, _T("*.xcs\0"));
   InitFileField(*wf, _T("prpInputFile"),
@@ -1603,7 +1122,7 @@ setVariables()
     dfe->addEnumText(_("Scaled"));
     dfe->addEnumText(_("Scaled centered"));
     dfe->addEnumText(_("Fixed"));
-    dfe->Set(g_eDialogStyle);
+    dfe->Set(DialogStyleSetting);
     wp->RefreshDisplay();
   }
 
@@ -1634,6 +1153,22 @@ setVariables()
     wp->RefreshDisplay();
   }
 
+  if (Display::RotateSupported()) {
+    wp = (WndProperty*)wf->FindByName(_T("prpDisplayOrientation"));
+    assert(wp != NULL);
+
+    DataFieldEnum *dfe = (DataFieldEnum *)wp->GetDataField();
+    dfe->addEnumText(_("Default"));
+    dfe->addEnumText(_("Portrait"));
+    dfe->addEnumText(_("Landscape"));
+    dfe->Set(Profile::GetDisplayOrientation());
+    wp->RefreshDisplay();
+  } else {
+    wp = (WndProperty*)wf->FindByName(_T("prpDisplayOrientation"));
+    assert(wp != NULL);
+    wp->hide();
+  }
+
 #if defined(_WIN32_WCE) && !defined(GNAV)
 // VENTA-ADDON Model change config menu 11
   wp = (WndProperty*)wf->FindByName(_T("prpAppInfoBoxModel"));
@@ -1641,35 +1176,20 @@ setVariables()
     DataFieldEnum* dfe;
     dfe = (DataFieldEnum*)wp->GetDataField();
     dfe->addEnumText(_("Generic"));
-    dfe->addEnumText(_("HP31x"));
-    dfe->addEnumText(_("MedionP5"));
-    dfe->addEnumText(_("MIO"));
-    dfe->addEnumText(_("Nokia500")); // VENTA3
-    dfe->addEnumText(_("PN6000"));
+    dfe->addEnumText(_T("HP31x"));
+    dfe->addEnumText(_T("MedionP5"));
+    dfe->addEnumText(_T("MIO"));
+    dfe->addEnumText(_T("Nokia500")); // VENTA3
+    dfe->addEnumText(_T("PN6000"));
     dfe->Set((int)GlobalModelType);
     wp->RefreshDisplay();
   }
 #endif
 
-  wp = (WndProperty*)wf->FindByName(_T("prpExtendedVisualGlide"));
-  if (wp) {
-    DataFieldEnum* dfe;
-    dfe = (DataFieldEnum*)wp->GetDataField();
-    dfe->addEnumText(_("Normal"));
-    dfe->addEnumText(_("Extended"));
-    dfe = (DataFieldEnum*)wp->GetDataField();
-    dfe->Set(XCSoarInterface::SettingsMap().ExtendedVisualGlide);
-    wp->RefreshDisplay();
-  }
-
   wp = (WndProperty*)wf->FindByName(_T("prpGestures"));
   if (wp) {
-    DataFieldEnum* dfe;
-    dfe = (DataFieldEnum*)wp->GetDataField();
-    dfe->addEnumText(_("Disabled"));
-    dfe->addEnumText(_("Enabled"));
-    dfe = (DataFieldEnum*)wp->GetDataField();
-    dfe->Set(settings_computer.EnableGestures);
+    DataFieldBoolean &df = *(DataFieldBoolean *)wp->GetDataField();
+    df.Set(settings_computer.EnableGestures);
     wp->RefreshDisplay();
   }
 
@@ -1687,20 +1207,6 @@ setVariables()
     dfe->Set(settings_computer.AverEffTime);
     wp->RefreshDisplay();
   }
-
-// Fonts
-  wp = (WndProperty*)wf->FindByName(_T("prpUseCustomFonts"));
-  if (wp) {
-    DataFieldBoolean * dfb = (DataFieldBoolean*) wp->GetDataField();
-    dfb->Set(Appearance.UseCustomFonts);
-    ShowFontEditButtons(dfb->GetAsBoolean());
-    wp->RefreshDisplay();
-    RefreshFonts();
-  }
-  FontRegistryChanged=false;
-
-
-// end fonts
 
   wp = (WndProperty*)wf->FindByName(_T("prpAppCompassAppearance"));
   if (wp) {
@@ -1788,21 +1294,16 @@ setVariables()
   if (wp) {
     if (is_altair() || !is_embedded())
       wp->hide();
-    wp->GetDataField()->Set(XCSoarInterface::SettingsMap().EnableAutoBlank);
+    DataFieldBoolean *df = (DataFieldBoolean *)wp->GetDataField();
+    df->Set(XCSoarInterface::SettingsMap().EnableAutoBlank);
     wp->RefreshDisplay();
   }
 
   wp = (WndProperty*)wf->FindByName(_T("prpAutoBacklight")); // VENTA4
   if (wp) {
     wp->set_visible(model_is_hp31x());
-    wp->GetDataField()->Set(CommonInterface::EnableAutoBacklight);
-    wp->RefreshDisplay();
-  }
-
-  wp = (WndProperty*)wf->FindByName(_T("prpAutoSoundVolume")); // VENTA4
-  if (wp) {
-    wp->set_visible(is_embedded());
-    wp->GetDataField()->Set(CommonInterface::EnableAutoSoundVolume);
+    DataFieldBoolean *df = (DataFieldBoolean *)wp->GetDataField();
+    df->Set(CommonInterface::EnableAutoBacklight);
     wp->RefreshDisplay();
   }
 
@@ -1834,12 +1335,6 @@ setVariables()
                    settings_computer.LoggerTimeStepCircling);
   LoadFormProperty(*wf, _T("prpSnailWidthScale"),
                    XCSoarInterface::SettingsMap().SnailWidthScale);
-
-  for (unsigned i = 0; i < 4; i++) {
-    for (unsigned j = 0; j < InfoBoxLayout::numInfoWindows; j++) {
-      SetInfoBoxSelector(j, i);
-    }
-  }
 }
 
 static bool
@@ -1964,13 +1459,25 @@ PrepareConfigurationDialog()
     return;
 
   wf->SetKeyDownNotify(FormKeyDown);
-  wf->SetCommandCallback(OnCommand);
+
+  CheckBox *cb = (CheckBox *)wf->FindByName(_T("Expert"));
+  cb->set_checked(XCSoarInterface::UserLevel > 0);
 
   ((WndButton *)wf->FindByName(_T("cmdClose")))->SetOnClickNotify(OnCloseClicked);
+
+  ((WndButton *)wf->FindByName(_T("cmdInfoBoxesCircling")))->
+      SetOnClickNotify(OnInfoBoxesCircling);
+  ((WndButton *)wf->FindByName(_T("cmdInfoBoxesCruise")))->
+      SetOnClickNotify(OnInfoBoxesCruise);
+  ((WndButton *)wf->FindByName(_T("cmdInfoBoxesFinalGlide")))->
+      SetOnClickNotify(OnInfoBoxesFinalGlide);
+  ((WndButton *)wf->FindByName(_T("cmdInfoBoxesAuxiliary")))->
+      SetOnClickNotify(OnInfoBoxesAuxiliary);
 
   configuration_tabbed = ((TabbedControl *)wf->FindByName(_T("tabbed")));
   assert(configuration_tabbed != NULL);
 
+  WndListFrame* PagesList = NULL;
   PagesList = ((WndListFrame *)wf->FindByName(_T("lstPages")));
   assert(PagesList != NULL);
   PagesList->SetPaintItemCallback(OnPagesListItemPaint);
@@ -1985,10 +1492,6 @@ PrepareConfigurationDialog()
     if (wp) {
       wp->hide();
     }
-  }
-
-  for (int item=0; item<10; item++) {
-    cpyInfoBox[item] = -1;
   }
 
   setVariables();
@@ -2019,7 +1522,7 @@ void dlgConfigurationShowModal(void)
   SETTINGS_COMPUTER &settings_computer =
     XCSoarInterface::SetSettingsComputer();
 
-  changed |= SaveFormProperty(wf, _T("prpAbortSafetyUseCurrent"),
+  changed |= SaveFormProperty(*wf, _T("prpAbortSafetyUseCurrent"),
                               szProfileAbortSafetyUseCurrent,
                               settings_computer.safety_mc_use_current);
 
@@ -2058,23 +1561,23 @@ void dlgConfigurationShowModal(void)
     }
   }
 
-  changed |= SaveFormProperty(wf, _T("prpSetSystemTimeFromGPS"),
+  changed |= SaveFormProperty(*wf, _T("prpSetSystemTimeFromGPS"),
                               szProfileSetSystemTimeFromGPS,
                               XCSoarInterface::SetSettingsMap().SetSystemTimeFromGPS);
 
-  changed |= SaveFormProperty(wf, _T("prpIgnoreNMEAChecksum"),
+  changed |= SaveFormProperty(*wf, _T("prpIgnoreNMEAChecksum"),
                               szProfileIgnoreNMEAChecksum,
                               NMEAParser::ignore_checksum);
 
-  changed |= SaveFormProperty(wf, _T("prpTrailDrift"),
+  changed |= SaveFormProperty(*wf, _T("prpTrailDrift"),
                               szProfileTrailDrift,
                               XCSoarInterface::SetSettingsMap().EnableTrailDrift);
-
-  changed |= SaveFormProperty(wf, _T("prpTrail"),
+  changed |= SaveFormProperty(*wf, _T("prpDetourCostMarker"),
+                              szProfileDetourCostMarker,
+                              XCSoarInterface::SetSettingsMap().EnableDetourCostMarker);
+  changed |= SaveFormProperty(*wf, _T("prpTrail"),
                               szProfileSnailTrail,
                               XCSoarInterface::SetSettingsMap().TrailActive);
-
-// VENTA3: do not save VisualGlide to registry or profile
 
   wp = (WndProperty*)wf->FindByName(_T("prpPolarType"));
   if (wp) {
@@ -2087,27 +1590,27 @@ void dlgConfigurationShowModal(void)
   }
 
   short tmp = settings_computer.AltitudeMode;
-  changed |= SaveFormProperty(wf, _T("prpAirspaceDisplay"),
+  changed |= SaveFormProperty(*wf, _T("prpAirspaceDisplay"),
                               szProfileAltMode, tmp);
   settings_computer.AltitudeMode = (AirspaceDisplayMode_t)tmp;
 
-  changed |= SaveFormProperty(wf, _T("prpLockSettingsInFlight"),
+  changed |= SaveFormProperty(*wf, _T("prpLockSettingsInFlight"),
                               szProfileLockSettingsInFlight,
                               XCSoarInterface::LockSettingsInFlight);
 
-  changed |= SaveFormProperty(wf, _T("prpLoggerShortName"),
+  changed |= SaveFormProperty(*wf, _T("prpLoggerShortName"),
                               szProfileLoggerShort,
                               settings_computer.LoggerShortName);
 
-  changed |= SaveFormProperty(wf, _T("prpEnableFLARMMap"),
+  changed |= SaveFormProperty(*wf, _T("prpEnableFLARMMap"),
                               szProfileEnableFLARMMap,
                               XCSoarInterface::SetSettingsMap().EnableFLARMMap);
 
-  changed |= SaveFormProperty(wf, _T("prpEnableFLARMGauge"),
+  changed |= SaveFormProperty(*wf, _T("prpEnableFLARMGauge"),
                               szProfileEnableFLARMGauge,
                               XCSoarInterface::SetSettingsMap().EnableFLARMGauge);
 
-  changed |= SaveFormProperty(wf, _T("prpEnableTAGauge"),
+  changed |= SaveFormProperty(*wf, _T("prpEnableTAGauge"),
                               szProfileEnableTAGauge,
                               XCSoarInterface::SetSettingsMap().EnableTAGauge);
 
@@ -2120,11 +1623,11 @@ void dlgConfigurationShowModal(void)
     }
   }
 
-  changed |= SaveFormProperty(wf, _T("prpAirspaceOutline"),
+  changed |= SaveFormProperty(*wf, _T("prpAirspaceOutline"),
                               szProfileAirspaceBlackOutline,
                               XCSoarInterface::SetSettingsMap().bAirspaceBlackOutline);
 
-  changed |= SaveFormProperty(wf, _T("prpAutoZoom"),
+  changed |= SaveFormProperty(*wf, _T("prpAutoZoom"),
                               szProfileAutoZoom,
                               XCSoarInterface::SetSettingsMap().AutoZoom);
 
@@ -2152,31 +1655,31 @@ void dlgConfigurationShowModal(void)
                               ugAltitude, settings_computer.AltWarningMargin,
                               szProfileAltMargin);
 
-  changed |= SaveFormProperty(wf, _T("prpAirspaceWarnings"),
+  changed |= SaveFormProperty(*wf, _T("prpAirspaceWarnings"),
                               szProfileAirspaceWarning,
                               settings_computer.EnableAirspaceWarnings);
 
-  changed |= SaveFormProperty(wf, _T("prpWarningTime"),
+  changed |= SaveFormProperty(*wf, _T("prpWarningTime"),
                               szProfileWarningTime,
                               settings_computer.airspace_warnings.WarningTime);
 
-  changed |= SaveFormProperty(wf, _T("prpAcknowledgementTime"),
+  changed |= SaveFormProperty(*wf, _T("prpAcknowledgementTime"),
                               szProfileAcknowledgementTime,
                               settings_computer.airspace_warnings.AcknowledgementTime);
 
-  changed |= SaveFormProperty(wf, _T("prpWaypointLabels"),
+  changed |= SaveFormProperty(*wf, _T("prpWaypointLabels"),
                               szProfileDisplayText,
                               XCSoarInterface::SetSettingsMap().DisplayTextType);
 
-  changed |= SaveFormProperty(wf, _T("prpEnableTerrain"),
+  changed |= SaveFormProperty(*wf, _T("prpEnableTerrain"),
                               szProfileDrawTerrain,
                               XCSoarInterface::SetSettingsMap().EnableTerrain);
 
-  changed |= SaveFormProperty(wf, _T("prpEnableTopology"),
+  changed |= SaveFormProperty(*wf, _T("prpEnableTopology"),
                               szProfileDrawTopology,
                               XCSoarInterface::SetSettingsMap().EnableTopology);
 
-  changed |= SaveFormProperty(wf, _T("prpCirclingZoom"),
+  changed |= SaveFormProperty(*wf, _T("prpCirclingZoom"),
                               szProfileCircleZoom,
                               XCSoarInterface::SetSettingsMap().CircleZoom);
 
@@ -2207,34 +1710,27 @@ void dlgConfigurationShowModal(void)
                               settings_computer.safety_height_terrain,
                               szProfileSafetyAltitudeTerrain);
 
-  changed |= SaveFormProperty(wf, _T("prpAutoWind"), szProfileAutoWind,
+  changed |= SaveFormProperty(*wf, _T("prpAutoWind"), szProfileAutoWind,
                               settings_computer.AutoWindMode);
 
-  changed |= SaveFormProperty(wf, _T("prpWindArrowStyle"),
+  changed |= SaveFormProperty(*wf, _T("prpWindArrowStyle"),
                               szProfileWindArrowStyle,
                               XCSoarInterface::SetSettingsMap().WindArrowStyle);
 
   int auto_mc_mode = (int)settings_computer.auto_mc_mode;
-  changed |= SaveFormProperty(wf, _T("prpAutoMcMode"), szProfileAutoMcMode,
+  changed |= SaveFormProperty(*wf, _T("prpAutoMcMode"), szProfileAutoMcMode,
                               auto_mc_mode);
   settings_computer.auto_mc_mode = (TaskBehaviour::AutoMCMode_t)auto_mc_mode;
 
-  if (SaveFormProperty(wf, _T("prpWaypointsOutOfRange"),
-                       szProfileWaypointsOutOfRange,
-                       WayPointFile::WaypointsOutOfRangeSetting)) {
-    WaypointFileChanged = true;
-    changed = true;
-  }
-
-  changed |= SaveFormProperty(wf, _T("prpEnableNavBaroAltitude"),
+  changed |= SaveFormProperty(*wf, _T("prpEnableNavBaroAltitude"),
                               szProfileEnableNavBaroAltitude,
                               settings_computer.EnableNavBaroAltitude);
 
-  changed |= SaveFormProperty(wf, _T("prpFinalGlideTerrain"),
+  changed |= SaveFormProperty(*wf, _T("prpFinalGlideTerrain"),
                               szProfileFinalGlideTerrain,
                               settings_computer.FinalGlideTerrain);
 
-  changed |= SaveFormProperty(wf, _T("prpBlockSTF"),
+  changed |= SaveFormProperty(*wf, _T("prpBlockSTF"),
                               szProfileBlockSTF,
                               settings_computer.EnableBlockSTF);
 
@@ -2379,24 +1875,24 @@ void dlgConfigurationShowModal(void)
 
   {
     unsigned t= settings_computer.olc_rules;
-    changed |= SaveFormProperty(wf, _T("prpOLCRules"), szProfileOLCRules,
+    changed |= SaveFormProperty(*wf, _T("prpOLCRules"), szProfileOLCRules,
                                 t);
     settings_computer.olc_rules = (OLCRules)t;
   }
 
-  changed |= SaveFormProperty(wf, _T("prpHandicap"), szProfileHandicap,
+  changed |= SaveFormProperty(*wf, _T("prpHandicap"), szProfileHandicap,
                               settings_computer.olc_handicap);
 
   PolarFileChanged = FinishFileField(*wf, _T("prpPolarFile"),
                                      szProfilePolarFile);
 
-  WaypointFileChanged =
-    FinishFileField(*wf, _T("prpWaypointFile"), szProfileWayPointFile) ||
+  WaypointFileChanged = WaypointFileChanged |
+    FinishFileField(*wf, _T("prpWaypointFile"), szProfileWayPointFile) |
     FinishFileField(*wf, _T("prpAdditionalWaypointFile"),
                     szProfileAdditionalWayPointFile);
 
   AirspaceFileChanged =
-    FinishFileField(*wf, _T("prpAirspaceFile"), szProfileAirspaceFile) ||
+    FinishFileField(*wf, _T("prpAirspaceFile"), szProfileAirspaceFile) |
     FinishFileField(*wf, _T("prpAdditionalAirspaceFile"),
                     szProfileAdditionalAirspaceFile);
 
@@ -2411,16 +1907,54 @@ void dlgConfigurationShowModal(void)
   AirfieldFileChanged = FinishFileField(*wf, _T("prpAirfieldFile"),
                                         szProfileAirfieldFile);
 
-  if (FinishFileField(*wf, _T("prpLanguageFile"), szProfileLanguageFile))
-    requirerestart = true;
+  wp = (WndProperty *)wf->FindByName(_T("prpLanguageFile"));
+  if (wp != NULL) {
+    DataFieldEnum &df = *(DataFieldEnum *)wp->GetDataField();
 
-  if (FinishFileField(*wf, _T("prpStartMaxSpeedMargin"), szProfileStatusFile))
+    TCHAR old_value[MAX_PATH];
+    if (!Profile::GetPath(szProfileLanguageFile, old_value))
+      old_value[0] = _T('\0');
+
+    const TCHAR *old_base = BaseName(old_value);
+    if (old_base == NULL)
+      old_base = old_value;
+
+    TCHAR buffer[MAX_PATH];
+    const TCHAR *new_value, *new_base;
+
+    switch (df.GetAsInteger()) {
+    case 0:
+      new_value = new_base = _T("auto");
+      break;
+
+    case 1:
+      new_value = new_base = _T("none");
+      break;
+
+    default:
+      _tcscpy(buffer, df.GetAsString());
+      ContractLocalPath(buffer);
+      new_value = buffer;
+      new_base = BaseName(new_value);
+      if (new_base == NULL)
+        new_base = new_value;
+      break;
+    }
+
+    if (_tcscmp(old_value, new_value) != 0 &&
+        _tcscmp(old_base, new_base) != 0) {
+      Profile::Set(szProfileLanguageFile, new_value);
+      requirerestart = changed = true;
+    }
+  }
+
+  if (FinishFileField(*wf, _T("prpStatusFile"), szProfileStatusFile))
     requirerestart = true;
 
   if (FinishFileField(*wf, _T("prpInputFile"), szProfileInputFile))
     requirerestart = true;
 
-  changed |= SaveFormProperty(wf, _T("prpBallastSecsToEmpty"),
+  changed |= SaveFormProperty(*wf, _T("prpBallastSecsToEmpty"),
                               szProfileBallastSecsToEmpty,
                               settings_computer.BallastSecsToEmpty);
 
@@ -2463,15 +1997,6 @@ void dlgConfigurationShowModal(void)
     }
   }
 
-  wp = (WndProperty*)wf->FindByName(_T("prpExtendedVisualGlide")); // VENTA4
-  if (wp) {
-    if (XCSoarInterface::SettingsMap().ExtendedVisualGlide != wp->GetDataField()->GetAsInteger()) {
-      XCSoarInterface::SetSettingsMap().ExtendedVisualGlide = wp->GetDataField()->GetAsInteger();
-      Profile::Set(szProfileExtendedVisualGlide,
-                    XCSoarInterface::SettingsMap().ExtendedVisualGlide);
-      changed = true;
-    }
-  }
   wp = (WndProperty*)wf->FindByName(_T("prpGestures")); // VENTA6
   if (wp) {
     if (settings_computer.EnableGestures != wp->GetDataField()->GetAsBoolean()) {
@@ -2504,6 +2029,20 @@ void dlgConfigurationShowModal(void)
     }
   }
 
+  if (Display::RotateSupported()) {
+    wp = (WndProperty*)wf->FindByName(_T("prpDisplayOrientation"));
+    assert(wp != NULL);
+
+    const DataFieldEnum *dfe = (const DataFieldEnum *)wp->GetDataField();
+    Display::orientation orientation =
+      (Display::orientation)dfe->GetAsInteger();
+    if (orientation != Profile::GetDisplayOrientation()) {
+      Profile::SetDisplayOrientation(orientation);
+      changed = true;
+      requirerestart = true;
+    }
+  }
+
 #if defined(_WIN32_WCE) && !defined(GNAV)
   // VENTA-ADDON MODEL CHANGE
   wp = (WndProperty*)wf->FindByName(_T("prpAppInfoBoxModel"));
@@ -2518,29 +2057,6 @@ void dlgConfigurationShowModal(void)
   }
 //
 #endif
-
-  //Fonts
-  wp = (WndProperty*)wf->FindByName(_T("prpUseCustomFonts"));
-  if (wp) {
-    DataFieldBoolean * dfb = (DataFieldBoolean*) wp->GetDataField();
-    if (dfb) {
-      if ((Appearance.UseCustomFonts != dfb->GetAsBoolean())
-          || (Appearance.UseCustomFonts && FontRegistryChanged)) {
-        Appearance.UseCustomFonts = !Appearance.UseCustomFonts;
-        Profile::Set(szProfileUseCustomFonts, Appearance.UseCustomFonts);
-        changed = true;
-        requirerestart = true;
-      }
-    }
-  }
-
-  TempInfoWindowFont.reset();
-  TempTitleWindowFont.reset();
-  TempMapWindowFont.reset();
-  TempTitleSmallWindowFont.reset();
-  TempMapWindowBoldFont.reset();
-  TempCDIWindowFont.reset();
-  TempMapLabelFont.reset();
 
   wp = (WndProperty*)wf->FindByName(_T("prpAppStatusMessageAlignment"));
   if (wp) {
@@ -2568,10 +2084,10 @@ void dlgConfigurationShowModal(void)
   wp = (WndProperty*)wf->FindByName(_T("prpDialogStyle"));
   if (wp)
     {
-      if (g_eDialogStyle != (DialogStyle_t)(wp->GetDataField()->GetAsInteger()))
+      if (DialogStyleSetting != (DialogStyle)(wp->GetDataField()->GetAsInteger()))
         {
-          g_eDialogStyle = (DialogStyle_t)(wp->GetDataField()->GetAsInteger());
-          Profile::Set(szProfileAppDialogStyle, g_eDialogStyle);
+          DialogStyleSetting = (DialogStyle)(wp->GetDataField()->GetAsInteger());
+          Profile::Set(szProfileAppDialogStyle, DialogStyleSetting);
           changed = true;
         }
     }
@@ -2582,73 +2098,69 @@ void dlgConfigurationShowModal(void)
       Appearance.IndLandable = (IndLandable_t)(wp->GetDataField()->GetAsInteger());
       Profile::Set(szProfileAppIndLandable, Appearance.IndLandable);
       changed = true;
-      MapGfx.InitLandableIcons();
+      Graphics::InitLandableIcons();
     }
   }
 
-  changed |= SaveFormProperty(wf, _T("prpEnableExternalTriggerCruise"),
+  changed |= SaveFormProperty(*wf, _T("prpEnableExternalTriggerCruise"),
                               szProfileEnableExternalTriggerCruise,
                               settings_computer.EnableExternalTriggerCruise);
 
   changed |= requirerestart |=
-    SaveFormProperty(wf, _T("prpAppInverseInfoBox"),
+    SaveFormProperty(*wf, _T("prpAppInverseInfoBox"),
                      szProfileAppInverseInfoBox, Appearance.InverseInfoBox);
 
-  changed |= SaveFormProperty(wf, _T("prpGliderScreenPosition"),
+  changed |= SaveFormProperty(*wf, _T("prpGliderScreenPosition"),
                               szProfileGliderScreenPosition,
                               XCSoarInterface::SetSettingsMap().GliderScreenPosition);
 
   changed |= requirerestart |=
-    SaveFormProperty(wf, _T("prpAppDefaultMapWidth"),
+    SaveFormProperty(*wf, _T("prpAppDefaultMapWidth"),
                      szProfileAppDefaultMapWidth, Appearance.DefaultMapWidth);
 
-  changed |= SaveFormProperty(wf, _T("prpAppAveNeedle"), szProfileAppAveNeedle,
+  changed |= SaveFormProperty(*wf, _T("prpAppAveNeedle"), szProfileAppAveNeedle,
                               Appearance.GaugeVarioAveNeedle);
 
   changed |= requirerestart |=
-    SaveFormProperty(wf, _T("prpAppInfoBoxColors"),
+    SaveFormProperty(*wf, _T("prpAppInfoBoxColors"),
                      szProfileAppInfoBoxColors, Appearance.InfoBoxColors);
 
   changed |= requirerestart |=
-    SaveFormProperty(wf, _T("prpAppGaugeVarioSpeedToFly"),
+    SaveFormProperty(*wf, _T("prpAppGaugeVarioSpeedToFly"),
                      szProfileAppGaugeVarioSpeedToFly,
                      Appearance.GaugeVarioSpeedToFly);
 
   changed |= requirerestart |=
-    SaveFormProperty(wf, _T("prpAppGaugeVarioAvgText"),
+    SaveFormProperty(*wf, _T("prpAppGaugeVarioAvgText"),
                      szProfileAppGaugeVarioAvgText,
                      Appearance.GaugeVarioAvgText);
 
   changed |= requirerestart |=
-    SaveFormProperty(wf, _T("prpAppGaugeVarioGross"),
+    SaveFormProperty(*wf, _T("prpAppGaugeVarioGross"),
                      szProfileAppGaugeVarioGross,
                      Appearance.GaugeVarioGross);
 
-  changed |= SaveFormProperty(wf, _T("prpAppGaugeVarioMc"),
+  changed |= SaveFormProperty(*wf, _T("prpAppGaugeVarioMc"),
                               szProfileAppGaugeVarioMc,
                               Appearance.GaugeVarioMc);
 
-  changed |= SaveFormProperty(wf, _T("prpAppGaugeVarioBugs"),
+  changed |= SaveFormProperty(*wf, _T("prpAppGaugeVarioBugs"),
                               szProfileAppGaugeVarioBugs,
                               Appearance.GaugeVarioBugs);
 
-  changed |= SaveFormProperty(wf, _T("prpAppGaugeVarioBallast"),
+  changed |= SaveFormProperty(*wf, _T("prpAppGaugeVarioBallast"),
                               szProfileAppGaugeVarioBallast,
                               Appearance.GaugeVarioBallast);
 
 #ifdef HAVE_BLANK
-  changed |= SaveFormProperty(wf, _T("prpAutoBlank"),
+  changed |= SaveFormProperty(*wf, _T("prpAutoBlank"),
                               szProfileAutoBlank,
                               XCSoarInterface::SetSettingsMap().EnableAutoBlank);
 #endif
 
-  changed |= SaveFormProperty(wf, _T("prpAutoBacklight"),
+  changed |= SaveFormProperty(*wf, _T("prpAutoBacklight"),
                               szProfileAutoBacklight,
                               CommonInterface::EnableAutoBacklight);
-
-  changed |= SaveFormProperty(wf, _T("prpAutoSoundVolume"),
-                              szProfileAutoSoundVolume,
-                              CommonInterface::EnableAutoSoundVolume);
 
   wp = (WndProperty*)wf->FindByName(_T("prpTerrainContrast"));
   if (wp) {
@@ -2671,7 +2183,7 @@ void dlgConfigurationShowModal(void)
     }
   }
 
-  changed |= SaveFormProperty(wf, _T("prpTerrainRamp"), szProfileTerrainRamp,
+  changed |= SaveFormProperty(*wf, _T("prpTerrainRamp"), szProfileTerrainRamp,
                               XCSoarInterface::SetSettingsMap().TerrainRamp);
 
   taskchanged |= SaveFormProperty(*wf, _T("prpFinishMinHeight"), ugAltitude,
@@ -2702,11 +2214,11 @@ void dlgConfigurationShowModal(void)
 
   changed |= taskchanged;
 
-  changed |= SaveFormProperty(wf, _T("prpLoggerTimeStepCruise"),
+  changed |= SaveFormProperty(*wf, _T("prpLoggerTimeStepCruise"),
                               szProfileLoggerTimeStepCruise,
                               settings_computer.LoggerTimeStepCruise);
 
-  changed |= SaveFormProperty(wf, _T("prpLoggerTimeStepCircling"),
+  changed |= SaveFormProperty(*wf, _T("prpLoggerTimeStepCircling"),
                               szProfileLoggerTimeStepCircling,
                               settings_computer.LoggerTimeStepCircling);
 
@@ -2733,24 +2245,13 @@ void dlgConfigurationShowModal(void)
       Profile::Set(szProfileSnailWidthScale,
                     XCSoarInterface::SettingsMap().SnailWidthScale);
       changed = true;
-      MapGfx.InitSnailTrail(XCSoarInterface::SettingsMap());
+      Graphics::InitSnailTrail(XCSoarInterface::SettingsMap());
     }
   }
 
   if (DevicePortChanged)
     for (unsigned i = 0; i < NUMDEV; ++i)
       Profile::SetDeviceConfig(i, device_config[i]);
-
-  for (unsigned i = 0; i < 4; ++i)
-    for (unsigned j = 0; j < InfoBoxLayout::numInfoWindows; ++j)
-      GetInfoBoxSelector(j, i);
-
-  if (waypointneedsave) {
-    way_points.optimise();
-    if (MessageBoxX(_("Save changes to waypoint file?"), _("Waypoints edited"),
-                    MB_YESNO | MB_ICONQUESTION) == IDYES)
-      AskWaypointSave();
-  }
 
   if (!is_embedded() && DevicePortChanged)
     requirerestart = true;

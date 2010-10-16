@@ -44,7 +44,9 @@ Copyright_License {
 #include "Thread/Guard.hpp"
 #include "Compiler.h"
 
-class RasterMap;
+#include <tchar.h>
+
+class FileCache;
 
 /**
  * Class to manage raster terrain database, potentially with 
@@ -65,14 +67,14 @@ public:
  * Constructor.  Returns uninitialised object. 
  * 
  */
-  RasterTerrain(const char *path)
-    :Guard<RasterMap>(map), map(path) {}
+  RasterTerrain(const TCHAR *path, const TCHAR *world_file, FileCache *cache)
+    :Guard<RasterMap>(map), map(path, world_file, cache) {}
 
 /** 
  * Load the terrain.  Determines the file to load from profile settings.
  * 
  */
-  static RasterTerrain *OpenTerrain();
+  static RasterTerrain *OpenTerrain(FileCache *cache);
 
   gcc_pure
   short GetTerrainHeight(const GeoPoint location) const {
@@ -82,11 +84,6 @@ public:
 
   int GetEffectivePixelSize(fixed &pixel_D, const GeoPoint &location) const {
     return map.GetEffectivePixelSize(pixel_D, location);
-  }
-
-  gcc_pure
-  bool WaypointIsInTerrainRange(const GeoPoint &location) const {
-    return map.inside(location);
   }
 
   GeoPoint GetTerrainCenter() const {

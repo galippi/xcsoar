@@ -38,8 +38,8 @@ Copyright_License {
 
 #include "Dialogs/Internal.hpp"
 #include "Units.hpp"
-#include "ProfileKeys.hpp"
-#include "Profile.hpp"
+#include "Profile/ProfileKeys.hpp"
+#include "Profile/Profile.hpp"
 #include "Audio/VegaVoice.h"
 #include "DataField/Base.hpp"
 #include "MainWindow.hpp"
@@ -52,7 +52,7 @@ static void OnCloseClicked(WindowControl * Sender){
 }
 
 
-static CallBackTableEntry_t CallBackTable[]={
+static CallBackTableEntry CallBackTable[]={
   DeclareCallBackEntry(OnCloseClicked),
   DeclareCallBackEntry(NULL)
 };

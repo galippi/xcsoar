@@ -22,13 +22,20 @@
 #define _ZZIP_CONF_H 1
 
 #if !defined ZZIP_OMIT_CONFIG_H
-# ifdef __GNUC__
-# include <zzip/_gnuc.h>
-# elif defined _MSC_VER || defined __BORLANDC__ || defined __WATCOMC__ || defined WIN32
+# if defined _MSC_VER || defined __BORLANDC__ || defined __WATCOMC__
 # include <zzip/_msvc.h>
+# elif defined ZZIP_1_H
+# include "zzip-1.h"
+# elif defined ZZIP_2_H
+# include "zzip-2.h"
+# elif defined ZZIP_3_H
+# include "zzip-3.h"
+# elif defined ZZIP_4_H
+# include "zzip-4.h"
+# elif defined ZZIP_5_H
+# include "zzip-5.h"
 # else /* autoconf generated */
-JMW something wrong
-//# include <zzip/_config.h>
+# include <zzip/_config.h>
 # endif
 #endif
 
@@ -97,11 +104,7 @@ JMW something wrong
 #ifdef   ZZIP___int64
 #define _zzip___int64 ZZIP___int64
 #else
-  #if defined(__BORLANDC__)
-#define _zzip___int64 __int64
-#else
-  #define _zzip___int64 _int64     // JMW
-#endif
+#define _zzip___int64 long long
 #endif
 #endif
 
@@ -136,6 +139,8 @@ JMW something wrong
 # endif
 #endif
 
+#ifdef ZZIP_DISABLED
+
 #include <errno.h>
 
 /* mingw32msvc errno : would be in winsock.h */
@@ -150,6 +155,8 @@ JMW something wrong
 #define ELOOP ENOEXEC
 #endif
 #endif
+
+#endif /* ZZIP_DISABLED */
 
 #if defined __WATCOMC__
 #undef  _zzip_inline
@@ -204,12 +211,6 @@ JMW something wrong
 #  endif
 #     endif
 
-
-#if defined __GNUC__ || defined __attribute__
-#define __zzip_attribute__(X) __attribute__(X)
-#else
-#define __zzip_attribute__(X)
-#endif
 
 #if defined ZZIP_EXPORTS || defined ZZIPLIB_EXPORTS
 # undef ZZIP_DLL

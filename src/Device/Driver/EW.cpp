@@ -46,6 +46,7 @@ Copyright_License {
 #include "Device/Port.hpp"
 #include "NMEA/Checksum.h"
 
+#include <windows.h> /* for Sleep() */
 #include <tchar.h>
 #include <stdio.h>
 #include "Waypoint/Waypoint.hpp"
@@ -56,14 +57,14 @@ Copyright_License {
 
 class EWDevice : public AbstractDevice {
 protected:
-  ComPort *port;
+  Port *port;
   bool fDeclarationPending;
   unsigned long lLastBaudrate;
   int nDeclErrorCode;
   int ewDecelTpIndex;
 
 public:
-  EWDevice(ComPort *_port)
+  EWDevice(Port *_port)
     :port(_port), fDeclarationPending(false),
      lLastBaudrate(0), nDeclErrorCode(0), ewDecelTpIndex(0) {}
 
@@ -77,7 +78,7 @@ public:
 };
 
 static void
-WriteWithChecksum(ComPort *port, const char *String)
+WriteWithChecksum(Port *port, const char *String)
 {
   port->Write(String);
 
@@ -336,7 +337,7 @@ EWDevice::LinkTimeout()
 }
 
 static Device *
-EWCreateOnComPort(ComPort *com_port)
+EWCreateOnPort(Port *com_port)
 {
   return new EWDevice(com_port);
 }
@@ -344,5 +345,5 @@ EWCreateOnComPort(ComPort *com_port)
 const struct DeviceRegister ewDevice = {
   _T("EW Logger"),
   drfGPS | drfLogger,
-  EWCreateOnComPort,
+  EWCreateOnPort,
 };

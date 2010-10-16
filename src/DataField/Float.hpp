@@ -67,13 +67,11 @@ public DataField
        mValue(Default), mMin(Min), mMax(Max), mStep(Step), mFine(Fine)
   {
       SupportCombo=true;
-     (mOnDataAccess)(this, daGet);
-
     };
 
   void Inc(void);
   void Dec(void);
-  unsigned CreateComboList();
+  virtual ComboList *CreateComboList() const;
   void SetFromCombo(int iDataFieldIndex, TCHAR *sValue);
 
   virtual bool GetAsBoolean(void) const;

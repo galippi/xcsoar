@@ -62,12 +62,11 @@ public:
     :DataField(EditFormat, DisplayFormat, OnDataAccess),
      mValue(Default), mMin(Min), mMax(Max), mStep(Step) {
     SupportCombo = true;
-    (mOnDataAccess)(this, daGet);
   }
 
   void Inc(void);
   void Dec(void);
-  virtual unsigned CreateComboList();
+  virtual ComboList *CreateComboList() const;
 
   virtual bool GetAsBoolean(void) const;
   virtual int GetAsInteger(void) const;

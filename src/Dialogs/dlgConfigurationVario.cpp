@@ -40,7 +40,7 @@ Copyright_License {
 #include "Dialogs/Message.hpp"
 #include "Screen/Layout.hpp"
 #include "Device/device.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "DataField/Enum.hpp"
 #include "MainWindow.hpp"
 #include "Simulator.hpp"
@@ -192,7 +192,7 @@ VegaConfigurationUpdated(const TCHAR *name, bool first, bool setvalue = false,
   if (setvalue) {
     wp = (WndProperty*)wf->FindByName(propname);
     if (wp) {
-      wp->GetDataField()->Set((int)ext_setvalue);
+      wp->GetDataField()->SetAsInteger((int)ext_setvalue);
       wp->RefreshDisplay();
     }
     _stprintf(requesttext, _T("PDVSC,S,%s,%d"), name, ext_setvalue);
@@ -219,7 +219,7 @@ VegaConfigurationUpdated(const TCHAR *name, bool first, bool setvalue = false,
       // helps if variables haven't been modified.
       wp = (WndProperty*)wf->FindByName(propname);
       if (wp) {
-        wp->GetDataField()->Set(lvalue);
+        wp->GetDataField()->SetAsInteger(lvalue);
         wp->RefreshDisplay();
       }
     }
@@ -233,7 +233,7 @@ VegaConfigurationUpdated(const TCHAR *name, bool first, bool setvalue = false,
 
       wp = (WndProperty*)wf->FindByName(propname);
       if (wp) {
-        wp->GetDataField()->Set(lvalue);
+        wp->GetDataField()->SetAsInteger(lvalue);
         wp->RefreshDisplay();
       }
     } else if (updated == 2) {
@@ -723,7 +723,7 @@ FormKeyDown(WindowControl *Sender, unsigned key_code)
   }
 }
 
-static CallBackTableEntry_t CallBackTable[] = {
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnNextClicked),
   DeclareCallBackEntry(OnPrevClicked),
   DeclareCallBackEntry(OnDemoClicked),

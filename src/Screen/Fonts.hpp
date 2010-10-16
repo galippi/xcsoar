@@ -38,7 +38,7 @@ Copyright_License {
 #ifndef XCSOAR_FONTS_HPP
 #define XCSOAR_FONTS_HPP
 
-#include <windows.h>
+#include <tchar.h>
 
 struct Appearance;
 class Font;
@@ -53,14 +53,11 @@ namespace Fonts
   extern Font CDI;
   extern Font MapLabel;
 
-  void LoadCustomFont(Font *theFont, const TCHAR FontRegKey[],
-                      LOGFONT *LogFontUsed = NULL);
+  void LoadCustomFont(Font *theFont, const TCHAR FontRegKey[]);
 
-  void SetFont(Font *theFont, LOGFONT autoLogFont,
-                      LOGFONT *LogFontUsed = NULL);
-
-  void
-  Initialize(bool use_custom);
+  void Initialize();
+  void SizeInfoboxFont();
+  void LoadCustom();
 
   const TCHAR* GetStandardFontFace();
 }

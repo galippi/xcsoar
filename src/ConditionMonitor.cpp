@@ -277,12 +277,12 @@ protected:
 
     /// @todo should be destination location
 
-    fixed sunsettime(sun.CalcSunTimes(cmp.Basic().Location,
-                                      cmp.Basic().DateTime, GetUTCOffset() / 3600));
+    sun.CalcSunTimes(cmp.Basic().Location, cmp.Basic().DateTime,
+                     fixed(GetUTCOffset()) / 3600);
     fixed d1((res.TimeElapsed + fixed(DetectCurrentTime(&cmp.Basic()))) / 3600);
     fixed d0(DetectCurrentTime(&cmp.Basic()) / 3600);
 
-    bool past_sunset = (d1 > sunsettime) && (d0 < sunsettime);
+    bool past_sunset = (d1 > sun.TimeOfSunSet) && (d0 < sun.TimeOfSunSet);
     return past_sunset;
   }
 
@@ -388,7 +388,7 @@ protected:
   Notify(void)
   {
     if (withinMargin)
-      Message::AddMessage(_("Start rules slightly violated\r\nbut within margin"));
+      Message::AddMessage(_("Start rules slightly violated\nbut within margin"));
     else
       Message::AddMessage(_("Start rules violated"));
   }

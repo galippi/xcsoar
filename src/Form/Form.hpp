@@ -89,7 +89,7 @@ class WndForm: public ContainerControl
   };
 
 public:
-  typedef int (*TimerNotifyCallback_t)(WindowControl *Sender);
+  typedef void (*TimerNotifyCallback_t)(WindowControl *Sender);
   typedef bool (*KeyDownNotifyCallback_t)(WindowControl *Sender,
       unsigned key_code);
 
@@ -145,9 +145,9 @@ public:
    * @param Width Width of the Window
    * @param Height Height of the Window
    */
-  WndForm(SingleWindow &_main_window, const TCHAR *Caption,
-          int X, int Y, int Width, int Height,
-          const WindowStyle style);
+  WndForm(SingleWindow &_main_window, int X, int Y, int Width, int Height,
+          const TCHAR *Caption = _T(""),
+          const WindowStyle style = WindowStyle());
 
   /** Destructor */
   virtual ~WndForm();
@@ -186,7 +186,11 @@ public:
    * @return the Window, or NULL if not found
    */
   Window *FindByName(const TCHAR *name) {
-    return name_to_window[name];
+    name_to_window_t::iterator i = name_to_window.find(name);
+    if (i == name_to_window.end())
+      return NULL;
+
+    return i->second;
   }
 
   /**
@@ -224,7 +228,7 @@ public:
   }
 
   /** Set the font of the titlebar */
-  const Font *SetTitleFont(const Font &font);
+  void SetTitleFont(const Font &font);
 
   int ShowModal(bool bEnableMap = false);
 
@@ -238,7 +242,7 @@ public:
   virtual bool on_command(unsigned id, unsigned code);
 
   /** Set the background color of the window */
-  Color SetBackColor(Color Value);
+  void SetBackColor(Color Value);
 
   void SetKeyDownNotify(KeyDownNotifyCallback_t KeyDownNotify) {
     mOnKeyDownNotify = KeyDownNotify;

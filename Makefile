@@ -48,15 +48,17 @@ include $(topdir)/build/compile.mk
 include $(topdir)/build/llvm.mk
 include $(topdir)/build/tools.mk
 include $(topdir)/build/resource.mk
+include $(topdir)/build/version.mk
 include $(topdir)/build/generate.mk
 include $(topdir)/build/doco.mk
 
 # Create libraries for zzip, jasper and compatibility stuff
 include $(topdir)/build/libutil.mk
 include $(topdir)/build/libmath.mk
+include $(topdir)/build/libprofile.mk
+include $(topdir)/build/zlib.mk
 include $(topdir)/build/zzip.mk
 include $(topdir)/build/jasper.mk
-include $(topdir)/build/compat.mk
 include $(topdir)/build/driver.mk
 include $(topdir)/build/io.mk
 include $(topdir)/build/shapelib.mk
@@ -100,6 +102,7 @@ LDLIBS = $(TARGET_LDLIBS) $(GCONF_LDLIBS)
 DIALOG_SOURCES = \
 	$(SRC)/Dialogs/XML.cpp \
 	$(SRC)/Dialogs/Message.cpp \
+	$(SRC)/Dialogs/ListPicker.cpp \
 	$(SRC)/Dialogs/dlgAirspace.cpp \
 	$(SRC)/Dialogs/dlgAirspaceColours.cpp \
 	$(SRC)/Dialogs/dlgAirspacePatterns.cpp \
@@ -112,6 +115,10 @@ DIALOG_SOURCES = \
 	$(SRC)/Dialogs/dlgChecklist.cpp \
 	$(SRC)/Dialogs/dlgComboPicker.cpp \
 	$(SRC)/Dialogs/dlgConfiguration.cpp \
+	$(SRC)/Dialogs/dlgConfigPage.cpp \
+	$(SRC)/Dialogs/dlgConfigFonts.cpp \
+	$(SRC)/Dialogs/dlgConfigInfoboxes.cpp \
+	$(SRC)/Dialogs/dlgConfigWaypoints.cpp \
 	$(SRC)/Dialogs/dlgConfigurationVario.cpp \
 	$(SRC)/Dialogs/dlgFlarmTraffic.cpp \
 	$(SRC)/Dialogs/dlgFlarmTrafficDetails.cpp \
@@ -131,6 +138,7 @@ DIALOG_SOURCES = \
 	$(SRC)/Dialogs/dlgTaskPointType.cpp \
 	$(SRC)/Dialogs/dlgTaskHelpers.cpp \
 	$(SRC)/Dialogs/dlgTaskCalculator.cpp \
+	$(SRC)/Dialogs/dlgTarget.cpp \
 	\
 	$(SRC)/Dialogs/dlgTeamCode.cpp \
 	$(SRC)/Dialogs/dlgTextEntry.cpp \
@@ -200,6 +208,7 @@ XCSOAR_SOURCES := \
 	$(SRC)/WayPoint/WayPointFileWinPilot.cpp \
 	$(SRC)/WayPoint/WayPointFileSeeYou.cpp \
 	$(SRC)/WayPoint/WayPointFileZander.cpp \
+	$(SRC)/WayPoint/WayPointRenderer.cpp \
 	$(SRC)/Wind/WindAnalyser.cpp \
 	$(SRC)/Wind/WindMeasurementList.cpp \
 	$(SRC)/Wind/WindStore.cpp \
@@ -284,6 +293,7 @@ XCSOAR_SOURCES := \
 	\
 	$(SRC)/Topology/TopologyFile.cpp \
 	$(SRC)/Topology/TopologyStore.cpp \
+	$(SRC)/Topology/TopologyGlue.cpp \
 	$(SRC)/Topology/XShape.cpp \
 	$(SRC)/Terrain/RasterBuffer.cpp \
 	$(SRC)/Terrain/RasterProjection.cpp \
@@ -303,7 +313,7 @@ XCSOAR_SOURCES := \
 	$(SRC)/Simulator.cpp \
 	$(SRC)/Asset.cpp \
 	$(SRC)/Appearance.cpp \
-	$(SRC)/Hardware/Battery.c \
+	$(SRC)/Hardware/Battery.cpp \
 	$(SRC)/Hardware/Display.cpp \
 	$(SRC)/MOFile.cpp \
 	$(SRC)/Language.cpp \
@@ -321,17 +331,19 @@ XCSOAR_SOURCES := \
 	$(SRC)/CommandLine.cpp \
 	$(SRC)/OS/FileUtil.cpp \
 	$(SRC)/OS/FileMapping.cpp \
+	$(SRC)/OS/PathName.cpp \
 	$(SRC)/Version.cpp \
 	$(SRC)/Audio/Sound.cpp \
 	$(SRC)/Audio/VegaVoice.cpp \
 	$(SRC)/Compatibility/fmode.c \
 	$(SRC)/Compatibility/string.c 	\
-	$(SRC)/Registry.cpp \
-	$(SRC)/Profile.cpp \
-	$(SRC)/ProfileGlue.cpp \
-	$(SRC)/ProfileKeys.cpp \
+	$(SRC)/Profile/Profile.cpp \
+	$(SRC)/Profile/Writer.cpp \
+	$(SRC)/Profile/ProfileGlue.cpp \
+	$(SRC)/Profile/ProfileKeys.cpp \
 	$(SRC)/xmlParser.cpp \
 	$(SRC)/Thread/Thread.cpp \
+	$(SRC)/Thread/StoppableThread.cpp \
 	$(SRC)/Thread/WorkerThread.cpp \
 	$(SRC)/Thread/Mutex.cpp \
 	$(SRC)/Thread/Debug.cpp \
@@ -374,6 +386,8 @@ XCSOAR_SOURCES := \
 	$(SRC)/Device/Geoid.cpp \
 	$(SRC)/Device/Parser.cpp \
 	$(SRC)/Device/Port.cpp \
+	$(SRC)/Device/NullPort.cpp \
+	$(SRC)/Device/SerialPort.cpp \
 	$(SRC)/Device/FLARM.cpp \
 	$(SRC)/Device/Internal.cpp \
 	$(DIALOG_SOURCES)
@@ -382,8 +396,13 @@ XCSOAR_SOURCES := \
 #	$(SRC)/WaveThread.cpp \
 
 
+ifneq ($(findstring $(TARGET),ALTAIR ALTAIRPORTRAIT),)
+XCSOAR_SOURCES += $(SRC)/Hardware/AltairControl.cpp
+endif
+
 XCSOAR_OBJS = $(call SRC_TO_OBJ,$(XCSOAR_SOURCES))
 XCSOAR_LDADD = \
+	$(PROFILE_LIBS) \
 	$(IO_LIBS) \
 	$(DATA_FIELD_LIBS) \
 	$(FORM_LIBS) \
@@ -393,7 +412,6 @@ XCSOAR_LDADD = \
 	$(SHAPELIB_LIBS) \
 	$(JASPER_LIBS) \
 	$(ZZIP_LIBS) \
-	$(COMPAT_LIBS) \
 	$(UTIL_LIBS) \
 	$(MATH_LIBS) \
 	$(RESOURCE_BINARY)

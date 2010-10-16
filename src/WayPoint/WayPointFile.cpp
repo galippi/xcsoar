@@ -46,8 +46,6 @@ Copyright_License {
 #include "IO/ZipLineReader.hpp"
 #include "IO/TextWriter.hpp"
 
-int WayPointFile::WaypointsOutOfRangeSetting = 0;
-
 WayPointFile::WayPointFile(const TCHAR* file_name, const int _file_num,
                            const bool _compressed): 
   file_num(_file_num),
@@ -88,15 +86,9 @@ WayPointFile::AltitudeFromTerrain(GeoPoint &location,
 
 
 void
-WayPointFile::add_waypoint_if_in_range(Waypoints &way_points, 
-                                       const Waypoint &new_waypoint,
-                                       const RasterTerrain *terrain)
+WayPointFile::add_waypoint(Waypoints &way_points,
+                           const Waypoint &new_waypoint)
 {
-  // if waypoint out of terrain range and should not be included
-  // -> return without error condition
-  if (terrain != NULL && !checkWaypointInTerrainRange(new_waypoint, *terrain))
-    return;
-
   // Append the new waypoint to the waypoint list and
   // return successful line parse
   Waypoint wp(new_waypoint);
@@ -109,28 +101,17 @@ WayPointFile::check_altitude(Waypoint &new_waypoint,
                              const RasterTerrain *terrain,
                              bool alt_ok)
 {
-  if (terrain == NULL)
+  if (terrain == NULL || alt_ok)
     return;
 
   // Load waypoint altitude from terrain
   const short t_alt = AltitudeFromTerrain(new_waypoint.Location, *terrain);
   if (t_alt == RasterTerrain::TERRAIN_INVALID) {
-    if (!alt_ok)
-      new_waypoint.Altitude = fixed_zero;
+    new_waypoint.Altitude = fixed_zero;
   } else { // TERRAIN_VALID
-    if (!alt_ok || fabs((fixed)t_alt - new_waypoint.Altitude) > fixed(100))
     new_waypoint.Altitude = (fixed)t_alt;
   }
 }
-
-bool
-WayPointFile::checkWaypointInTerrainRange(const Waypoint &way_point,
-                                          const RasterTerrain &terrain)
-{
-  return WaypointsOutOfRangeSetting != 2 ||
-    terrain.WaypointIsInTerrainRange(way_point.Location);
-}
-
 
 bool
 WayPointFile::Parse(Waypoints &way_points, 
@@ -140,7 +121,7 @@ WayPointFile::Parse(Waypoints &way_points,
   if (file[0] == 0)
     return false;
 
-  ProgressGlue::SetRange(100);
+  ProgressGlue::SetRange(25);
 
   // If normal file
   if (!compressed) {
@@ -157,7 +138,7 @@ WayPointFile::Parse(Waypoints &way_points,
       // and parse them
       parseLine(line, i, way_points, terrain);
 
-      unsigned status = reader.tell() * 100 / filesize;
+      unsigned status = reader.tell() * 25 / filesize;
       ProgressGlue::SetValue(status);
     }
   // If compressed file inside map file
@@ -175,7 +156,7 @@ WayPointFile::Parse(Waypoints &way_points,
       // and parse them
       parseLine(line, i, way_points, terrain);
 
-      unsigned status = reader.tell() * 100 / filesize;
+      unsigned status = reader.tell() * 25 / filesize;
       ProgressGlue::SetValue(status);
     }
   }

@@ -44,6 +44,7 @@ Copyright_License {
 #include "Dialogs.h"
 #include "PeriodClock.hpp"
 #include "Util/StringUtil.hpp"
+#include "Language.hpp"
 
 #include <stdlib.h>
 
@@ -75,7 +76,6 @@ KeyTimer(bool isdown, unsigned thekey)
 WindowControl::WindowControl() :
     mColorBack(Color::WHITE),
     mColorFore(Color::BLACK),
-    mhBrushBk(mColorBack),
     mhFont(&Fonts::Map),
     mHelpText(NULL),
     mOnHelpCallback(NULL)
@@ -108,44 +108,32 @@ WindowControl::SetCaption(const TCHAR *Value)
   }
 }
 
-const Font *
+void
 WindowControl::SetFont(const Font &Value)
 {
-  const Font *res = mhFont;
-
   if (mhFont != &Value) {
     // todo
     mhFont = &Value;
     invalidate();
   }
-  return res;
 }
 
-Color
+void
 WindowControl::SetForeColor(Color Value)
 {
-  Color res = mColorFore;
-
   if (mColorFore != Value) {
     mColorFore = Value;
     invalidate();
   }
-
-  return res;
 }
 
-Color
+void
 WindowControl::SetBackColor(Color Value)
 {
-  Color res = mColorBack;
-
   if (mColorBack != Value) {
     mColorBack = Value;
-    mhBrushBk.set(mColorBack);
     invalidate();
   }
-
-  return res;
 }
 
 void
@@ -178,7 +166,7 @@ WindowControl::OnHelp()
   return 0; // undefined. return 1 if defined
 #else
   if (mHelpText && !string_is_empty(mHelpText)) {
-    dlgHelpShowModal(*(SingleWindow *)get_root_owner(), mCaption, mHelpText);
+    dlgHelpShowModal(*(SingleWindow *)get_root_owner(), gettext(mCaption), gettext(mHelpText));
     return 1;
   }
 

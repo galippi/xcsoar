@@ -83,6 +83,9 @@ public:
   fixed value_radians() const {
     return m_value;
   }
+  fixed value_hours() const {
+    return m_value * fixed(24) / fixed_two_pi;
+  }
 #else
   gcc_const
   static Angle degrees(const fixed value) {
@@ -100,11 +103,19 @@ public:
   fixed value_radians() const {
     return m_value*fixed_deg_to_rad;
   }
+  fixed value_hours() const {
+    return m_value * fixed(24. / 360.);
+  }
 #endif
 
   gcc_const
   static Angle dms(const fixed d, const fixed m, const fixed s) {
     return Angle::degrees(d + m / 60 + s / 3600);
+  }
+
+  gcc_pure
+  inline fixed tan() const {
+    return ::tan(value_radians());
   }
 
   gcc_pure
@@ -157,6 +168,8 @@ public:
   fixed magnitude_radians() const;
 
   void flip();
+
+  Angle flipped() const;
 
   /**
    * Limits the angle (theta) to -180 - +180 degrees

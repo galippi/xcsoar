@@ -49,21 +49,18 @@ private:
   TCHAR mTextFalse[FORMATSIZE+1];
 
 public:
-  DataFieldBoolean(const TCHAR *EditFormat, const TCHAR *DisplayFormat,
-                   bool Default, const TCHAR *TextTrue, const TCHAR *TextFalse,
+  DataFieldBoolean(bool Default, const TCHAR *TextTrue, const TCHAR *TextFalse,
                    DataAccessCallback_t OnDataAccess)
-    :DataField(EditFormat, DisplayFormat, OnDataAccess),
+    :DataField(_T(""), _T(""), OnDataAccess),
      mValue(Default) {
     _tcscpy(mTextTrue, TextTrue);
     _tcscpy(mTextFalse, TextFalse);
     SupportCombo = true;
-
-    (mOnDataAccess)(this, daGet);
   }
 
   void Inc(void);
   void Dec(void);
-  virtual unsigned CreateComboList();
+  virtual ComboList *CreateComboList() const;
 
   virtual bool GetAsBoolean(void) const;
   virtual int GetAsInteger(void) const;

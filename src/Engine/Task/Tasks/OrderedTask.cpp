@@ -313,17 +313,15 @@ OrderedTask::update_idle(const AIRCRAFT_STATE& state)
       && (task_behaviour.optimise_targets_range)
       && (get_ordered_task_behaviour().aat_min_time > fixed_zero)) {
 
-    if (activeTaskPoint > 0) {
-      fixed p = calc_min_target(state, get_ordered_task_behaviour().aat_min_time);
-      (void)p;
+    fixed p = calc_min_target(state, get_ordered_task_behaviour().aat_min_time + fixed(300));
+    (void)p;
 
-      if (task_behaviour.optimise_targets_bearing) {
-        if (tps[activeTaskPoint]->type == TaskPoint::AAT) {
-          AATPoint *ap = (AATPoint *)tps[activeTaskPoint];
-          // very nasty hack
-          TaskOptTarget tot(tps, activeTaskPoint, state, glide_polar, *ap, ts);
-          tot.search(fixed(0.5));
-        }
+    if (task_behaviour.optimise_targets_bearing) {
+      if (tps[activeTaskPoint]->type == TaskPoint::AAT) {
+        AATPoint *ap = (AATPoint *)tps[activeTaskPoint];
+        // very nasty hack
+        TaskOptTarget tot(tps, activeTaskPoint, state, glide_polar, *ap, ts);
+        tot.search(fixed(0.5));
       }
     }
     retval = true;
@@ -382,7 +380,31 @@ OrderedTask::check_task() const
   return true;
 }
 
-bool 
+OrderedTaskPoint*
+OrderedTask::get_ordered_task_point(unsigned TPindex) const
+{
+ if (TPindex > tps.size() - 1) {
+   return NULL;
+ }
+ return tps[TPindex];
+}
+
+AATPoint*
+OrderedTask::get_AAT_task_point(unsigned TPindex) const
+{
+ if (TPindex > tps.size() - 1) {
+   return NULL;
+ }
+ if (tps[TPindex]) {
+    if (tps[TPindex]->type == TaskPoint::AAT)
+      return (AATPoint*) tps[TPindex];
+    else
+      return (AATPoint*)NULL;
+ }
+ return NULL;
+}
+
+bool
 OrderedTask::scan_start_finish()
 {
   /// @todo also check there are not more than one start/finish point

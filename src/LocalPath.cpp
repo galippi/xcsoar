@@ -70,6 +70,16 @@ GetPrimaryDataPath()
 }
 
 void
+SetPrimaryDataPath(const TCHAR *path)
+{
+  assert(path != NULL);
+  assert(!string_is_empty(path));
+
+  free(data_path);
+  data_path = _tcsdup(path);
+}
+
+void
 LocalPath(TCHAR *buffer, const TCHAR *file)
 {
   assert(data_path != NULL);
@@ -101,7 +111,13 @@ ExpandLocalPath(TCHAR* filein)
 
   // Get the relative file name and location (ptr)
   const TCHAR *ptr = string_after_prefix(filein, local_path_code);
-  if (!ptr || string_is_empty(ptr))
+  if (ptr == NULL)
+    return;
+
+  while (*ptr == _T('/') || *ptr == _T('\\'))
+    ++ptr;
+
+  if (string_is_empty(ptr))
     return;
 
   // Replace the code "%LOCAL_PATH%\\" by the full local path (output)
@@ -219,22 +235,35 @@ FindDataPath()
   }
 #endif
 
+  {
+    TCHAR buffer[MAX_PATH];
+    const TCHAR *path = GetHomeDataPath(buffer);
+    if (path != NULL)
+      return _tcsdup(path);
+  }
+
+  return NULL;
+}
+
+const TCHAR *
+GetHomeDataPath(TCHAR *buffer)
+{
 #ifdef HAVE_POSIX
   /* on Unix or WINE, use ~/.xcsoar */
   const TCHAR *home = getenv("HOME");
   if (home != NULL) {
-    TCHAR buffer[_tcslen(home) + 9];
     _tcscpy(buffer, home);
     _tcscat(buffer, _T("/.xcsoar"));
-    return _tcsdup(buffer);
+    return buffer;
   } else
-    return _tcsdup(_T("/etc/xcsoar"));
+    return _T("/etc/xcsoar");
 #else
-  TCHAR buffer[MAX_PATH];
-  SHGetSpecialFolderPath(NULL, buffer, CSIDL_PERSONAL, false);
+  if (!SHGetSpecialFolderPath(NULL, buffer, CSIDL_PERSONAL, false))
+    return NULL;
+
   _tcscat(buffer, _T(DIR_SEPARATOR_S));
   _tcscat(buffer, XCSDATADIR);
-  return _tcsdup(buffer);
+  return buffer;
 #endif
 }
 

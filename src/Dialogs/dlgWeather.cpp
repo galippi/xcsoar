@@ -57,21 +57,7 @@ OnCloseClicked(WindowControl * Sender)
 }
 
 static void
-OnDisplayItemData(DataField *Sender, DataField::DataAccessKind_t Mode)
-{
-  switch (Mode) {
-  case DataField::daGet:
-    Sender->Set((int)RASP.GetParameter());
-    break;
-  case DataField::daPut:
-  case DataField::daChange:
-    RASP.SetParameter(Sender->GetAsInteger());
-    break;
-  }
-}
-
-static void
-RASPGetTime(DataField *Sender)
+RASPGetTime(DataFieldEnum *Sender)
 {
   int index = 0;
   for (unsigned i = 0; i < RasterWeather::MAX_WEATHER_TIMES; i++) {
@@ -85,7 +71,7 @@ RASPGetTime(DataField *Sender)
 }
 
 static void
-RASPSetTime(DataField *Sender)
+RASPSetTime(DataFieldEnum *Sender)
 {
   int index = 0;
   if (Sender->GetAsInteger() <= 0) {
@@ -99,20 +85,6 @@ RASPSetTime(DataField *Sender)
 
       index++;
     }
-  }
-}
-
-static void
-OnTimeData(DataField *Sender, DataField::DataAccessKind_t Mode)
-{
-  switch (Mode) {
-  case DataField::daGet:
-    RASPGetTime(Sender);
-    break;
-  case DataField::daPut:
-  case DataField::daChange:
-    RASPSetTime(Sender);
-    break;
   }
 }
 
@@ -136,9 +108,7 @@ OnWeatherHelp(WindowControl * Sender)
   dlgHelpShowModal(XCSoarInterface::main_window, caption, help);
 }
 
-static CallBackTableEntry_t CallBackTable[] = {
-  DeclareCallBackEntry(OnTimeData),
-  DeclareCallBackEntry(OnDisplayItemData),
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnCloseClicked),
   DeclareCallBackEntry(OnWeatherHelp),
   DeclareCallBackEntry(NULL)

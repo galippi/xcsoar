@@ -102,21 +102,34 @@ MainWindow::set(const TCHAR* text,
 }
 
 void
-MainWindow::initialise()
+MainWindow::Initialise()
 {
   RECT rc = get_client_rect();
 
   Layout::Initialize(rc.right - rc.left, rc.bottom - rc.top);
 
+  // color/pattern chart (must have infobox geometry before this)
+  Graphics::Initialise();
+
+  LogStartUp(_T("Initialise fonts"));
+  Fonts::Initialize();
+}
+
+void
+MainWindow::InitialiseConfigured()
+{
+  RECT rc = get_client_rect();
+
   LogStartUp(_T("InfoBox geometry"));
   InfoBoxLayout::Init(rc);
   map_rect = InfoBoxLayout::GetRemainingRect(rc);
 
-  // color/pattern chart (must have infobox geometry before this)
-  MapGfx.Initialise();
+  Fonts::SizeInfoboxFont();
 
-  LogStartUp(_T("Initialise fonts"));
-  Fonts::Initialize(Appearance.UseCustomFonts);
+  if (Appearance.UseCustomFonts) {
+    LogStartUp(_T("Load fonts"));
+    Fonts::LoadCustom();
+  }
 
   LogStartUp(_T("Create info boxes"));
   InfoBoxManager::Create(rc);

@@ -37,7 +37,7 @@ Copyright_License {
 */
 
 #include "Dialogs/Internal.hpp"
-#include "Units.hpp"
+#include "Dialogs/ListPicker.hpp"
 #include "InputEvents.h"
 #include "DataField/Base.hpp"
 #include "DataField/ComboList.hpp"
@@ -45,69 +45,53 @@ Copyright_License {
 
 #include <assert.h>
 
-static WndForm *wf = NULL;
-
 static WndProperty *wComboPopupWndProperty;
 static DataField *ComboPopupDataField;
-static ComboList *ComboListPopup;
-static WndListFrame *wComboPopupListFrame;
-
-static TCHAR sSavedInitialValue[ComboPopupITEMMAX];
-static int iSavedInitialDataIndex = -1;
+static const ComboList *ComboListPopup;
 
 static void
 OnPaintComboPopupListItem(Canvas &canvas, const RECT rc, unsigned i)
 {
-  assert(i < (unsigned)ComboListPopup->ComboPopupItemCount);
+  assert(i < (unsigned)ComboListPopup->size());
 
   canvas.text_clipped(rc.left + Layout::FastScale(2),
                       rc.top + Layout::FastScale(2), rc,
-                      ComboListPopup->ComboPopupItemList[i]->StringValueFormatted);
+                      (*ComboListPopup)[i].StringValueFormatted);
+}
+
+int
+ComboPicker(SingleWindow &parent, const TCHAR *caption,
+            const ComboList &combo_list,
+            ListHelpCallback_t help_callback)
+{
+  ComboListPopup = &combo_list;
+
+  return ListPicker(parent, caption,
+                    combo_list.size(),
+                    combo_list.ComboPopupItemSavedIndex,
+                    Layout::Scale(18),
+                    OnPaintComboPopupListItem,
+                    help_callback);
 }
 
 static void
-OnHelpClicked(WindowControl * Sender)
+OnHelpClicked(unsigned i)
 {
-  (void)Sender;
-
-  unsigned i = wComboPopupListFrame->GetCursorIndex();
-
-  if (i < ComboListPopup->ComboPopupItemCount) {
-    int iDataIndex = ComboListPopup->ComboPopupItemList[i]->DataFieldIndex;
-    ComboPopupDataField->SetFromCombo(iDataIndex,
-      ComboListPopup->ComboPopupItemList[i]->StringValue);
+  if (i < ComboListPopup->size()) {
+    const ComboList::Item &item = (*ComboListPopup)[i];
+    ComboPopupDataField->SetFromCombo(item.DataFieldIndex,
+                                      item.StringValue);
   }
 
   wComboPopupWndProperty->OnHelp();
 }
 
-static void
-OnCloseClicked(WindowControl * Sender)
+static int
+ComboPicker(SingleWindow &parent, const WndProperty &control,
+            const ComboList &combo_list)
 {
-  (void)Sender;
-  wf->SetModalResult(mrOK);
+  return ComboPicker(parent, control.GetCaption(), combo_list, OnHelpClicked);
 }
-
-static void
-OnComboPopupListEnter(unsigned i)
-{
-  // double-click on item -- NOT in callback table because added manually
-  OnCloseClicked(wf);
-}
-
-static void
-OnCancelClicked(WindowControl * Sender)
-{
-  (void)Sender;
-  wf->SetModalResult(mrCancel);
-}
-
-static CallBackTableEntry_t CallBackTable[] = {
-  DeclareCallBackEntry(OnHelpClicked),
-  DeclareCallBackEntry(OnCloseClicked),
-  DeclareCallBackEntry(OnCancelClicked),
-  DeclareCallBackEntry(NULL)
-};
 
 int
 dlgComboPicker(SingleWindow &parent, WndProperty *theProperty)
@@ -124,72 +108,48 @@ dlgComboPicker(SingleWindow &parent, WndProperty *theProperty)
 
   bInComboPicker = true;
 
+  TCHAR sSavedInitialValue[100];
+  int iSavedInitialDataIndex = -1;
+
   while (bOpenCombo) {
     assert(theProperty != NULL);
     wComboPopupWndProperty = theProperty;
 
-    if (!Layout::landscape) {
-      wf = LoadDialog(CallBackTable, parent,
-                          _T("IDR_XML_COMBOPICKER_L"));
-    } else {
-      wf = LoadDialog(CallBackTable, parent,
-                          _T("IDR_XML_COMBOPICKER"));
-    }
-
-    if (!wf)
-      return -1;
-
-    assert(wf != NULL);
-    //assert(wf->GetWidth() <1200);  // sometimes we have a bogus window, setfocus goes nuts
-
-    wf->SetCaption(theProperty->GetCaption());
-
-    wComboPopupListFrame =
-      (WndListFrame*)wf->FindByName(_T("frmComboPopupList"));
-    assert(wComboPopupListFrame != NULL);
-    wComboPopupListFrame->SetActivateCallback(OnComboPopupListEnter);
-    wComboPopupListFrame->SetPaintItemCallback(OnPaintComboPopupListItem);
-
     ComboPopupDataField = wComboPopupWndProperty->GetDataField();
-    ComboListPopup = ComboPopupDataField->GetCombo();
     assert(ComboPopupDataField != NULL);
 
-    ComboPopupDataField->CreateComboList();
-    wComboPopupListFrame->SetLength(ComboListPopup->ComboPopupItemCount);
-    wComboPopupListFrame->SetCursorIndex(ComboListPopup->ComboPopupItemSavedIndex);
+    ComboListPopup = ComboPopupDataField->CreateComboList();
     if (bInitialPage) { // save values for "Cancel" from first page only
       bInitialPage = false;
-      iSavedInitialDataIndex = ComboListPopup->
-          ComboPopupItemList[ComboListPopup->ComboPopupItemSavedIndex]->
-          DataFieldIndex;
+      iSavedInitialDataIndex =
+        (*ComboListPopup)[ComboListPopup->ComboPopupItemSavedIndex]
+        .DataFieldIndex;
       ComboPopupDataField->CopyString(sSavedInitialValue, false);
     }
 
-    int idx = (wf->ShowModal() == mrOK ?
-               (int)wComboPopupListFrame->GetCursorIndex() :
-               -1);
+    int idx = ComboPicker(parent, *theProperty, *ComboListPopup);
 
     bOpenCombo = false; //tell  combo to exit loop after close
 
-    if (idx >= 0 && (unsigned)idx < ComboListPopup->ComboPopupItemCount) {
+    if (idx >= 0 && (unsigned)idx < ComboListPopup->size()) {
+      const ComboList::Item *item = &(*ComboListPopup)[idx];
+
       // OK/Select
-      if (ComboListPopup->ComboPopupItemList[idx]->DataFieldIndex ==
-          ComboPopupReopenMOREDataIndex) {
+      if (item->DataFieldIndex == ComboList::Item::NEXT_PAGE) {
         // we're last in list and the want more past end of list so select last real list item and reopen
         ComboPopupDataField->SetDetachGUI(true);
         // we'll reopen, so don't call xcsoar data changed routine yet
-        --idx;
+        item = &(*ComboListPopup)[idx - 1];
         bOpenCombo = true; // reopen combo with new selected index at center
-      } else if (ComboListPopup->ComboPopupItemList[idx]->DataFieldIndex ==
-                 ComboPopupReopenLESSDataIndex) {
+      } else if (item->DataFieldIndex == ComboList::Item::PREVIOUS_PAGE) {
         // same as above but lower items needed
         ComboPopupDataField->SetDetachGUI(true);
-        ++idx;
+        item = &(*ComboListPopup)[idx + 1];
         bOpenCombo = true;
       }
-      int iDataIndex = ComboListPopup->ComboPopupItemList[idx]->DataFieldIndex;
-      ComboPopupDataField->SetFromCombo(iDataIndex,
-          ComboListPopup->ComboPopupItemList[idx]->StringValue);
+
+      ComboPopupDataField->SetFromCombo(item->DataFieldIndex,
+                                        item->StringValue);
     } else {
       // Cancel
       // if we've detached the GUI during the load, then there is nothing to do here
@@ -200,11 +160,9 @@ dlgComboPicker(SingleWindow &parent, WndProperty *theProperty)
             sSavedInitialValue);
     }
 
-    wComboPopupWndProperty->RefreshDisplay();
-    ComboListPopup->FreeComboPopupItemList();
+    delete ComboListPopup;
 
-    delete wf;
-    wf = NULL;
+    wComboPopupWndProperty->RefreshDisplay();
   } // loop reopen combo if <<More>>  or <<Less>> picked
 
   bInComboPicker = false;

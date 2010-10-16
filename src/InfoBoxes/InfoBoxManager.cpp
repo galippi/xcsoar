@@ -48,18 +48,34 @@ Copyright_License {
 #include "Screen/Layout.hpp"
 #include "Screen/Fonts.hpp"
 #include "Screen/Graphics.hpp"
-#include "Hardware/Battery.h"
+#include "Hardware/Battery.hpp"
 #include "MainWindow.hpp"
 #include "Appearance.hpp"
 #include "Language.hpp"
+#include "DataField/Enum.hpp"
+#include "DataField/ComboList.hpp"
+#include "Dialogs.h"
+#include "Profile/Profile.hpp"
+#include "Interface.hpp"
 
 #include <assert.h>
 
 #include <algorithm>
 
-using std::min;
+namespace InfoBoxManager
+{
+  /** the window for displaying infoboxes full-screen */
+  InfoBoxFullWindow full_window;
 
-InfoBoxFullWindow InfoBoxManager::full_window;
+  unsigned GetCurrentType(unsigned box);
+  void SetCurrentType(unsigned box, char type);
+
+  void DisplayInfoBox();
+  void InfoBoxDrawIfDirty();
+  int GetFocused();
+
+  int GetInfoBoxBorder(unsigned i);
+}
 
 static bool InfoBoxesDirty = false;
 static bool InfoBoxesHidden = false;
@@ -68,18 +84,8 @@ InfoBoxWindow *InfoBoxes[MAXINFOWINDOWS];
 
 static InfoBoxLook info_box_look;
 
-static const int InfoTypeDefault[MAXINFOWINDOWS] = {
-  0x0E0E0E,
-  0x0B1215,
-  0x040000,
-  0x012316,
-  0x0A0A0A,
-  0x222223,
-  0x060606,
-  0x191919
-};
-
-static const int InfoTypeAltairDefault[MAXINFOWINDOWS] = {
+#ifdef GNAV
+static unsigned InfoType[MAXINFOWINDOWS] = {
   0x340E0E0E,
   0x33120B0B,
   0x31030316,
@@ -90,8 +96,18 @@ static const int InfoTypeAltairDefault[MAXINFOWINDOWS] = {
   0x250F0F0F,
   0x1A2D2D2D
 };
-
-static int InfoType[MAXINFOWINDOWS];
+#else
+static unsigned InfoType[MAXINFOWINDOWS] = {
+  0x0E0E0E,
+  0x0B1215,
+  0x040000,
+  0x012316,
+  0x0A0A0A,
+  0x222223,
+  0x060606,
+  0x191919
+};
+#endif
 
 void
 InfoBoxFullWindow::on_paint(Canvas &canvas)
@@ -117,7 +133,7 @@ InfoBoxFullWindow::on_paint(Canvas &canvas)
     fw = rw / (double)InfoBoxLayout::ControlWidth;
     fh = rh / (double)InfoBoxLayout::ControlHeight;
 
-    double f = min(fw, fh);
+    double f = std::min(fw, fh);
     rw = (int)(f * InfoBoxLayout::ControlWidth);
     rh = (int)(f * InfoBoxLayout::ControlHeight);
 
@@ -186,70 +202,72 @@ InfoBoxManager::Event_Select(int i)
   }
 
   if (InfoFocus >= 0)
-    main_window.map.set_focus();
+    XCSoarInterface::main_window.map.set_focus();
   else
     InfoBoxes[i]->set_focus();
 }
 
-int
-InfoBoxManager::getType(unsigned i, unsigned layer)
+enum InfoBoxManager::mode
+InfoBoxManager::GetCurrentMode()
 {
-  assert(i < MAXINFOWINDOWS);
-  assert(layer < 4);
+  if (XCSoarInterface::SettingsMap().EnableAuxiliaryInfo)
+    return MODE_AUXILIARY;
+  else if (XCSoarInterface::MapProjection().GetDisplayMode() == dmCircling)
+    return MODE_CIRCLING;
+  else if (XCSoarInterface::MapProjection().GetDisplayMode() == dmFinalGlide)
+    return MODE_FINAL_GLIDE;
+  else
+    return MODE_CRUISE;
+}
 
-  switch (layer) {
-  case 0:
-    return InfoType[i] & 0xff; // climb
-  case 1:
-    return (InfoType[i] >> 8) & 0xff; // cruise
-  case 2:
-    return (InfoType[i] >> 16) & 0xff; // final glide
-  case 3:
-    return (InfoType[i] >> 24) & 0xff; // auxiliary
+unsigned
+InfoBoxManager::GetType(unsigned box, enum mode mode)
+{
+  assert(box < MAXINFOWINDOWS);
+
+  switch (mode) {
+  case MODE_CIRCLING:
+    return InfoType[box] & 0xff;
+  case MODE_CRUISE:
+    return (InfoType[box] >> 8) & 0xff;
+  case MODE_FINAL_GLIDE:
+    return (InfoType[box] >> 16) & 0xff;
+  case MODE_AUXILIARY:
+    return (InfoType[box] >> 24) & 0xff;
   }
 
   return 0xdeadbeef; /* not reachable */
 }
 
-int
-InfoBoxManager::getTypeAll(unsigned i)
+unsigned
+InfoBoxManager::GetTypes(unsigned box)
 {
-  assert(i < MAXINFOWINDOWS);
+  assert(box < MAXINFOWINDOWS);
 
-  return InfoType[i];
+  return InfoType[box];
 }
 
 void
-InfoBoxManager::setTypeAll(unsigned i, unsigned j)
+InfoBoxManager::SetTypes(unsigned box, unsigned types)
 {
-  assert(i < MAXINFOWINDOWS);
+  assert(box < MAXINFOWINDOWS);
 
-  InfoType[i] = j;
+  InfoType[box] = types;
   // TODO: check it's within range
 }
 
-int
-InfoBoxManager::getType(unsigned i)
+unsigned
+InfoBoxManager::GetCurrentType(unsigned box)
 {
-  unsigned retval = 0;
-
-  if (SettingsMap().EnableAuxiliaryInfo)
-    retval = getType(i, 3);
-  else if (MapProjection().GetDisplayMode() == dmCircling)
-    retval = getType(i, 0);
-  else if (MapProjection().GetDisplayMode() == dmFinalGlide)
-    retval = getType(i, 2);
-  else
-    retval = getType(i, 1);
-
-  return min(InfoBoxFactory::NUM_TYPES - 1, retval);
+  unsigned retval = GetType(box, GetCurrentMode());
+  return std::min(InfoBoxFactory::NUM_TYPES - 1, retval);
 }
 
 bool
-InfoBoxManager::IsEmpty(unsigned mode)
+InfoBoxManager::IsEmpty(enum mode mode)
 {
   for (unsigned i = 0; i < MAXINFOWINDOWS; ++i)
-    if (InfoBoxManager::getType(i, mode) != 0)
+    if (InfoBoxManager::GetType(i, mode) != 0)
       return false;
 
   return true;
@@ -259,48 +277,41 @@ bool
 InfoBoxManager::IsEmpty()
 {
   for (unsigned i = 0; i < MAXINFOWINDOWS; ++i)
-    if (InfoBoxManager::getTypeAll(i) != 0)
+    if (InfoBoxManager::GetTypes(i) != 0)
       return false;
 
   return true;
 }
 
 void
-InfoBoxManager::setType(unsigned i, char j, unsigned layer)
+InfoBoxManager::SetType(unsigned i, char type, enum mode mode)
 {
   assert(i < MAXINFOWINDOWS);
 
-  switch (layer) {
-  case 0:
+  switch (mode) {
+  case MODE_CIRCLING:
     InfoType[i] &= 0xffffff00;
-    InfoType[i] += j;
+    InfoType[i] += type;
     break;
-  case 1:
+  case MODE_CRUISE:
     InfoType[i] &= 0xffff00ff;
-    InfoType[i] += (j << 8);
+    InfoType[i] += (type << 8);
     break;
-  case 2:
+  case MODE_FINAL_GLIDE:
     InfoType[i] &= 0xff00ffff;
-    InfoType[i] += (j << 16);
+    InfoType[i] += (type << 16);
     break;
-  case 3:
+  case MODE_AUXILIARY:
     InfoType[i] &= 0x00ffffff;
-    InfoType[i] += (j << 24);
+    InfoType[i] += (type << 24);
     break;
   }
 }
 
 void
-InfoBoxManager::setType(unsigned i, char j)
+InfoBoxManager::SetCurrentType(unsigned box, char type)
 {
-  if (SettingsMap().EnableAuxiliaryInfo)
-    setType(i, j, 3);
-  else if (MapProjection().GetDisplayMode() == dmCircling)
-    setType(i, j, 0);
-  else if (MapProjection().GetDisplayMode() == dmFinalGlide)
-    setType(i, j, 2);
-  else
-    setType(i, j, 1);
+  SetType(box, type, GetCurrentMode());
 }
 
 void
@@ -312,7 +323,7 @@ InfoBoxManager::Event_Change(int i)
   if (InfoFocus < 0)
     return;
 
-  k = getType(InfoFocus);
+  k = GetCurrentType(InfoFocus);
   if (i > 0)
     j = InfoBoxFactory::GetNext(k);
   else if (i < 0)
@@ -320,7 +331,7 @@ InfoBoxManager::Event_Change(int i)
 
   // TODO code: if i==0, go to default or reset
 
-  setType(InfoFocus, j);
+  SetCurrentType(InfoFocus, j);
 
   InfoBoxes[InfoFocus]->UpdateContent();
   Paint();
@@ -343,7 +354,7 @@ InfoBoxManager::DisplayInfoBox()
     // should apply to the function DoCalculationsSlow()
     // Do not put calculations here!
 
-    DisplayType[i] = getType(i);
+    DisplayType[i] = GetCurrentType(i);
 
     bool needupdate = ((DisplayType[i] != DisplayTypeLast[i]) || first);
 
@@ -395,7 +406,7 @@ InfoBoxManager::InfoBoxDrawIfDirty()
   // This should save lots of battery power due to CPU usage
   // of drawing the screen
 
-  if (InfoBoxesDirty && !SettingsMap().ScreenBlanked) {
+  if (InfoBoxesDirty && !XCSoarInterface::SettingsMap().ScreenBlanked) {
     DisplayInfoBox();
     InfoBoxesDirty = false;
   }
@@ -412,18 +423,12 @@ InfoBoxManager::ProcessTimer()
 {
   static fixed lasttime;
 
-  if (Basic().Time != lasttime) {
+  if (XCSoarInterface::Basic().Time != lasttime) {
     SetDirty();
-    lasttime = Basic().Time;
+    lasttime = XCSoarInterface::Basic().Time;
   }
 
   InfoBoxDrawIfDirty();
-}
-
-void InfoBoxManager::ResetInfoBoxes() {
-  memcpy(InfoType,
-         is_altair() ? InfoTypeAltairDefault : InfoTypeDefault,
-         sizeof(InfoType));
 }
 
 const TCHAR *
@@ -469,8 +474,6 @@ InfoBoxManager::GetInfoBoxBorder(unsigned i)
 void
 InfoBoxManager::Create(RECT rc)
 {
-  ResetInfoBoxes();
-
   info_box_look.value.fg_color
     = info_box_look.title.fg_color
     = info_box_look.comment.fg_color
@@ -490,19 +493,19 @@ InfoBoxManager::Create(RECT rc)
 
   info_box_look.colors[0] = border_color;
   info_box_look.colors[1] = Appearance.InverseInfoBox
-    ? MapGfx.inv_redColor : Color::RED;
+    ? Graphics::inv_redColor : Color::RED;
   info_box_look.colors[2] = Appearance.InverseInfoBox
-    ? MapGfx.inv_blueColor : Color::BLUE;
+    ? Graphics::inv_blueColor : Color::BLUE;
   info_box_look.colors[3] = Appearance.InverseInfoBox
-    ? MapGfx.inv_greenColor : Color::GREEN;
+    ? Graphics::inv_greenColor : Color::GREEN;
   info_box_look.colors[4] = Appearance.InverseInfoBox
-    ? MapGfx.inv_yellowColor : Color::YELLOW;
+    ? Graphics::inv_yellowColor : Color::YELLOW;
   info_box_look.colors[5] = Appearance.InverseInfoBox
-    ? MapGfx.inv_magentaColor : Color::MAGENTA;
+    ? Graphics::inv_magentaColor : Color::MAGENTA;
 
   WindowStyle style;
   style.hide();
-  full_window.set(main_window, rc.left, rc.top,
+  full_window.set(XCSoarInterface::main_window, rc.left, rc.top,
                   rc.right - rc.left, rc.bottom - rc.top);
 
   // create infobox windows
@@ -511,8 +514,9 @@ InfoBoxManager::Create(RECT rc)
     InfoBoxLayout::GetInfoBoxPosition(i, rc, &xoff, &yoff, &sizex, &sizey);
     int Border = GetInfoBoxBorder(i);
 
-    InfoBoxes[i] = new InfoBoxWindow(main_window, xoff, yoff, sizex, sizey,
-                               Border, info_box_look);
+    InfoBoxes[i] = new InfoBoxWindow(XCSoarInterface::main_window,
+                                     xoff, yoff, sizex, sizey,
+                                     Border, info_box_look);
   }
 }
 
@@ -523,4 +527,68 @@ InfoBoxManager::Destroy()
     delete (InfoBoxes[i]);
 
   full_window.reset();
+}
+
+static const ComboList *info_box_combo_list;
+
+static void
+OnInfoBoxHelp(unsigned item)
+{
+  int type = (*info_box_combo_list)[item].DataFieldIndex;
+
+  TCHAR caption[100];
+  _stprintf(caption, _T("%s: %s"), _("InfoBox"), InfoBoxFactory::GetName(type));
+
+  const TCHAR* text = InfoBoxFactory::GetDescription(type);
+  if (text)
+    dlgHelpShowModal(XCSoarInterface::main_window, caption, gettext(text));
+  else
+    dlgHelpShowModal(XCSoarInterface::main_window, caption,
+                     _("No help available on this item"));
+}
+
+void
+InfoBoxManager::SetupFocused()
+{
+  int i = GetFocused();
+  if (i < 0)
+    return;
+
+  const enum mode mode = GetCurrentMode();
+  int old_type = GetType(i, mode);
+
+  /* create a fake WndProperty for dlgComboPicker() */
+  /* XXX reimplement properly */
+
+  DataFieldEnum *dfe = new DataFieldEnum(old_type, NULL);
+  for (unsigned i = 0; i < InfoBoxFactory::NUM_TYPES; i++)
+    dfe->addEnumText(gettext(GetTypeDescription(i)));
+  dfe->Sort(0);
+  dfe->Set(old_type);
+
+  ComboList *list = dfe->CreateComboList();
+  delete dfe;
+
+  /* let the user select */
+
+  info_box_combo_list = list;
+  int result = ComboPicker(XCSoarInterface::main_window, _("InfoBox"), *list,
+                           OnInfoBoxHelp);
+  if (result < 0) {
+    delete list;
+    return;
+  }
+
+  /* was there a modification? */
+
+  int new_type = (*list)[result].DataFieldIndex;
+  delete list;
+  if (new_type == old_type)
+    return;
+
+  /* yes: apply and save it */
+
+  SetType(i, new_type, mode);
+  DisplayInfoBox();
+  Profile::SetInfoBoxes(i, GetTypes(i));
 }

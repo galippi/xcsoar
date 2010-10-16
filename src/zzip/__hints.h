@@ -146,6 +146,12 @@
 # endif
 #endif
 
+#ifdef __GNUC__
+#define ZZIP_GNUC_PACKED __attribute__((packed))
+#else
+#define ZZIP_GNUC_PACKED
+#endif
+
 #ifndef ZZIP_FUNCTION
 # if ZZIP_GNUC_ATLEAST(2,6)
 # define ZZIP_FUNC             __FUNCTION__

@@ -41,7 +41,6 @@ Copyright_License {
 
 // JMW OLD_TASK todo; continue with fixed vars here
 #include "Math/fixed.hpp"
-#include "DataField/ComboList.hpp"
 
 #include <tchar.h>
 
@@ -49,13 +48,13 @@ Copyright_License {
 #define UNITSIZE 10
 #define OUTBUFFERSIZE 128
 
+class ComboList;
+
 class DataField
 {
 public:
   typedef enum
   {
-    daGet,
-    daPut,
     daChange,
     daInc,
     daDec,
@@ -68,12 +67,9 @@ public:
             DataAccessCallback_t OnDataAccess = NULL);
   virtual ~DataField(void) {}
 
-  virtual void Special(void);
+  void Special(void);
   virtual void Inc(void);
   virtual void Dec(void);
-
-  virtual void GetData(void);
-  virtual void SetData(void);
 
   virtual bool GetAsBoolean() const;
   virtual int GetAsInteger() const;
@@ -85,12 +81,6 @@ public:
   virtual void SetAsInteger(int Value);
   virtual void SetAsFloat(fixed Value);
   virtual void SetAsString(const TCHAR *Value);
-
-  virtual void Set(bool Value){ (void)Value; }
-  virtual void Set(int Value){ (void)Value; }
-  virtual void Set(unsigned Value){ Set((int)Value); }
-  virtual void Set(fixed Value){ (void)Value; }
-  virtual void Set(const TCHAR *Value){ (void)Value; }
 
   void SetUnits(const TCHAR *text) { _tcscpy(mUnits, text); }
 
@@ -114,8 +104,7 @@ public:
   // allows combolist to iterate all values w/out triggering external events
   void SetDetachGUI(bool bDetachGUI) { mDetachGUI = bDetachGUI; }
   bool GetDetachGUI(void) { return mDetachGUI; }
-  virtual unsigned CreateComboList() { return 0; }
-  ComboList* GetCombo(void) { return &mComboList; }
+  virtual ComboList *CreateComboList() const { return NULL; }
 
   virtual void
   SetFromCombo(int iDataFieldIndex, TCHAR *sValue)
@@ -131,8 +120,8 @@ protected:
   TCHAR mEditFormat[FORMATSIZE + 1];
   TCHAR mDisplayFormat[FORMATSIZE + 1];
   TCHAR mUnits[UNITSIZE + 1];
-  ComboList mComboList;
-  unsigned CreateComboListStepping(void);
+
+  ComboList *CreateComboListStepping(void);
 
 private:
   int mUsageCounter;

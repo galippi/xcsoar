@@ -64,6 +64,18 @@ Font::set(const char *file, int ptsize, bool bold, bool italic)
   return true;
 }
 
+bool
+Font::set(const LOGFONT &log_font)
+{
+  // XXX hard coded path
+  const char *dejavu_ttf =
+    "/usr/share/fonts/truetype/ttf-dejavu/DejaVuSansCondensed.ttf";
+
+  return set(dejavu_ttf, log_font.lfHeight > 0 ? log_font.lfHeight : 10,
+             log_font.lfWeight >= 700,
+             log_font.lfItalic);
+}
+
 void
 Font::calculate_heights()
 {
@@ -102,15 +114,15 @@ Font::set(const TCHAR* facename, int height, bool bold, bool italic)
   font.lfWeight = (long)(bold ? FW_BOLD : FW_MEDIUM);
   font.lfItalic = italic;
   font.lfQuality = ANTIALIASED_QUALITY;
-  return Font::set(&font);
+  return Font::set(font);
 }
 
 bool
-Font::set(const LOGFONT *lplf)
+Font::set(const LOGFONT &log_font)
 {
   reset();
 
-  font = ::CreateFontIndirect(lplf);
+  font = ::CreateFontIndirect(&log_font);
   if (font == NULL)
     return false;
 
@@ -152,7 +164,7 @@ Font::calculate_heights()
     rec.top = 0;
     rec.right = tm.tmAveCharWidth;
     rec.bottom = tm.tmHeight;
-    buffer.text_opaque(0, 0, &rec, _T("M"));
+    buffer.text_opaque(0, 0, rec, _T("M"));
 
     int top = tm.tmHeight, bottom = 0;
 

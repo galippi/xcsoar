@@ -39,7 +39,6 @@ Copyright_License {
 #ifndef XCSOAR_INFO_BOX_MANAGER_HPP
 #define XCSOAR_INFO_BOX_MANAGER_HPP
 
-#include "Interface.hpp"
 #include "Screen/PaintWindow.hpp"
 #include "InfoBoxes/Content/Base.hpp"
 
@@ -54,51 +53,49 @@ protected:
   virtual void on_paint(Canvas &canvas);
 };
 
-class InfoBoxManager: public ActionInterface
+namespace InfoBoxManager
 {
-  /** the window for displaying infoboxes full-screen */
-  static InfoBoxFullWindow full_window;
+  enum mode {
+    MODE_CIRCLING,
+    MODE_CRUISE,
+    MODE_FINAL_GLIDE,
+    MODE_AUXILIARY,
+  };
 
-private:
-  static void ResetInfoBoxes();
-  static int getType(unsigned i);
-  static void setType(unsigned i, char j);
-  static void FocusOnWindow(unsigned i, bool selected);
+  void Event_Select(int i);
+  void Event_Change(int i);
 
-  static void DisplayInfoBox();
-  static void InfoBoxDrawIfDirty();
-  static int GetFocused();
+  const TCHAR *GetTypeDescription(unsigned i);
 
-  static int GetInfoBoxBorder(unsigned i);
+  void ProcessKey(InfoBoxContent::InfoBoxKeyCodes keycode);
+  bool Click(InfoBoxWindow &ib);
 
-public:
-  static void Event_Select(int i);
-  static void Event_Change(int i);
+  void ProcessTimer();
+  void SetDirty();
 
-  static const TCHAR *GetTypeDescription(unsigned i);
+  void Create(RECT rc);
+  void Destroy();
+  void Paint();
+  void Show();
+  void Hide();
 
-  static void ProcessKey(InfoBoxContent::InfoBoxKeyCodes keycode);
-  static bool Click(InfoBoxWindow &ib);
+  enum mode GetCurrentMode();
 
-  static void ProcessTimer();
-  static void SetDirty();
+  unsigned GetType(unsigned box, enum mode mode);
+  void SetType(unsigned box, char type, enum mode mode);
 
-  static void Create(RECT rc);
-  static void Destroy();
-  static void Paint();
-  static void Show();
-  static void Hide();
+  unsigned GetTypes(unsigned box);
+  void SetTypes(unsigned box, unsigned types);
 
-  static int getType(unsigned i, unsigned layer);
-  static void setType(unsigned i, char j, unsigned layer);
+  bool IsEmpty(enum mode mode);
+  bool IsEmpty();
 
-  static int getTypeAll(unsigned i);
-  static void setTypeAll(unsigned i, unsigned j);
+  bool HasFocus();
 
-  static bool IsEmpty(unsigned mode);
-  static bool IsEmpty();
-
-  static bool HasFocus();
+  /**
+   * Opens a configuration dialog for the focused InfoBox.
+   */
+  void SetupFocused();
 };
 
 #endif

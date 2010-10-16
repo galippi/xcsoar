@@ -171,6 +171,7 @@ protected:
   ContainerWindow *parent;
   int left, top;
   BufferCanvas canvas;
+  const Font *font;
 
   bool visible;
   bool focused;
@@ -186,7 +187,7 @@ private:
 public:
 #ifdef ENABLE_SDL
   Window()
-    :parent(NULL),
+    :parent(NULL), font(NULL),
      visible(true), focused(false),
      double_clicks(false) {}
 #else
@@ -309,6 +310,7 @@ public:
 #ifdef ENABLE_SDL
     this->left = left;
     this->top = top;
+    invalidate();
 #else
     ::SetWindowPos(hWnd, NULL, left, top, 0, 0,
                    SWP_NOSIZE | SWP_NOZORDER |
@@ -321,7 +323,8 @@ public:
     assert_thread();
 
 #ifdef ENABLE_SDL
-    // XXX
+    move(left, top);
+    resize(width, height);
 #else /* !ENABLE_SDL */
     ::SetWindowPos(hWnd, NULL, left, top, width, height,
                    SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
@@ -351,7 +354,9 @@ public:
     assert_thread();
 
 #ifdef ENABLE_SDL
-    // XXX
+    canvas.resize(width, height);
+    invalidate();
+    on_resize(width, height);
 #else /* !ENABLE_SDL */
     ::SetWindowPos(hWnd, NULL, 0, 0, width, height,
                    SWP_NOMOVE | SWP_NOZORDER |
@@ -384,15 +389,16 @@ public:
 #endif
   }
 
-  void set_font(const Font &font) {
+  void set_font(const Font &_font) {
     assert_none_locked();
     assert_thread();
 
 #ifdef ENABLE_SDL
-    // XXX
+    font = &_font;
+    invalidate();
 #else
     ::SendMessage(hWnd, WM_SETFONT,
-                  (WPARAM)font.native(), MAKELPARAM(TRUE,0));
+                  (WPARAM)_font.native(), MAKELPARAM(TRUE,0));
 #endif
   }
 
@@ -658,6 +664,8 @@ public:
 
 #ifdef ENABLE_SDL
   void paint() {
+    if (font != NULL)
+      canvas.select(*font);
     on_paint(canvas);
   }
 

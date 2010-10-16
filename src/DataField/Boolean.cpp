@@ -37,21 +37,17 @@ Copyright_License {
 */
 
 #include "DataField/Boolean.hpp"
+#include "DataField/ComboList.hpp"
 
-unsigned
-DataFieldBoolean::CreateComboList(void)
+ComboList *
+DataFieldBoolean::CreateComboList() const
 {
-  int i = 0;
-  mComboList.ComboPopupItemList[i] =
-      mComboList.CreateItem(i, i, mTextFalse, mTextFalse);
+  ComboList *combo_list = new ComboList();
+  combo_list->Append(0, 0, mTextFalse, mTextFalse);
+  combo_list->Append(1, 1, mTextTrue, mTextTrue);
 
-  i = 1;
-  mComboList.ComboPopupItemList[i] =
-      mComboList.CreateItem(i, i, mTextTrue, mTextTrue);
-
-  mComboList.ComboPopupItemCount = 2;
-  mComboList.ComboPopupItemSavedIndex = GetAsInteger();
-  return mComboList.ComboPopupItemCount;
+  combo_list->ComboPopupItemSavedIndex = GetAsInteger();
+  return combo_list;
 }
 
 bool

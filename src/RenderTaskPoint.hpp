@@ -86,6 +86,14 @@ protected:
   virtual void draw_off_track(const TaskPoint &tp);
   void draw_task_line(const GeoPoint& start, const GeoPoint& end);
   void draw_isoline(const AATPoint& tp);
+  /**
+   * Clear the part of the OZ background (shaded area) over which
+   * the aircraft has flown.
+   * The samples polygon is a convex hull, flying inside the polygon
+   * cannot possibly result in greater scored distance.
+   *
+   * @param tp
+   */
   void draw_samples(const OrderedTaskPoint& tp);
   void draw_oz_background(const OrderedTaskPoint& tp);
   void draw_oz_foreground(const OrderedTaskPoint& tp);

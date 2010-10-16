@@ -38,7 +38,7 @@ Copyright_License {
 */
 
 #include "GlideComputerAirData.hpp"
-#include "Wind/WindZigZag.h"
+#include "Wind/WindZigZag.hpp"
 #include "Wind/WindAnalyser.hpp"
 #include "GlideComputer.hpp"
 #include "Protection.hpp"
@@ -166,8 +166,7 @@ GlideComputerAirData::Wind()
     fixed zz_wind_bearing;
     int quality;
     quality = WindZigZagUpdate(Basic(), Calculated(),
-			       &zz_wind_speed,
-			       &zz_wind_bearing);
+                               zz_wind_speed, zz_wind_bearing);
 
     if (quality > 0)
       SetWindEstimate(zz_wind_speed, zz_wind_bearing, quality);
@@ -923,7 +922,7 @@ void
 GlideComputerAirData::ProcessSun()
 {
   sun.CalcSunTimes(Basic().Location, Basic().DateTime,
-                   GetUTCOffset() / 3600);
+                   fixed(GetUTCOffset()) / 3600);
   SetCalculated().TimeSunset = fixed(sun.TimeOfSunSet);
 }
 

@@ -38,33 +38,48 @@ Copyright_License {
 
 #include "Terrain/RasterMap.hpp"
 #include "Math/Earth.hpp"
-#include "jasper/jasper.h"
+#include "OS/PathName.hpp"
+#include "IO/FileCache.hpp"
 
 #include <assert.h>
 #include <string.h>
 
-int RasterMap::ref_count = 0;
-
-RasterMap::RasterMap(const char *_path)
-  :path(strdup(_path))
+RasterMap::RasterMap(const TCHAR *_path, const TCHAR *world_file,
+                     FileCache *cache)
+  :path(strdup(NarrowPathName(_path)))
 {
-  if (ref_count==0) {
-    jas_init();
+  bool cache_loaded = false;
+  if (cache != NULL) {
+    /* load the cache file */
+    FILE *file = cache->load(_T("terrain"), _path);
+    if (file != NULL) {
+      cache_loaded = raster_tile_cache.LoadCache(file);
+      fclose(file);
+    }
   }
-  ref_count++;
 
-  _ReloadJPG2000();
+  if (!cache_loaded) {
+    if (!raster_tile_cache.LoadOverview(path, world_file))
+      return;
 
-  if (!raster_tile_cache.GetInitialised())
-    raster_tile_cache.Reset();
+    if (cache != NULL) {
+      /* save the cache file */
+      FILE *file = cache->save(_T("terrain"), _path);
+      if (file != NULL) {
+        if (raster_tile_cache.SaveCache(file))
+          cache->commit(_T("terrain"), file);
+        else
+          cache->cancel(_T("terrain"), file);
+      }
+    }
+  }
+
+  projection.set(raster_tile_cache.GetBounds(),
+                 raster_tile_cache.GetWidth() * 256,
+                 raster_tile_cache.GetHeight() * 256);
 }
 
 RasterMap::~RasterMap() {
-  ref_count--;
-  if (ref_count==0) {
-    jas_cleanup();
-  }
-
   free(path);
 }
 
@@ -80,16 +95,15 @@ RasterMap::SetViewCenter(const GeoPoint &location)
   if (!raster_tile_cache.GetInitialised())
     return;
 
+  const BoundsRectangle &bounds = raster_tile_cache.GetBounds();
+
   int x = angle_to_pixel(location.Longitude, bounds.west, bounds.east,
                          raster_tile_cache.GetWidth());
 
   int y = angle_to_pixel(location.Latitude, bounds.north, bounds.south,
                          raster_tile_cache.GetHeight());
 
-  if (raster_tile_cache.PollTiles(x, y)) {
-    _ReloadJPG2000();
-    raster_tile_cache.PollTiles(x, y);
-  }
+  raster_tile_cache.UpdateTiles(path, x, y);
 }
 
 // accurate method
@@ -114,21 +128,4 @@ RasterMap::GetField(const GeoPoint &location) const
 {
   std::pair<unsigned, unsigned> xy = projection.project(location);
   return raster_tile_cache.GetField(xy.first, xy.second);
-}
-
-void
-RasterMap::_ReloadJPG2000()
-{
-  raster_tile_cache.LoadJPG2000(path);
-
-  if (!raster_tile_cache.GetInitialised())
-    return;
-
-  bounds.west = Angle::degrees((fixed)raster_tile_cache.lon_min);
-  bounds.east = Angle::degrees((fixed)raster_tile_cache.lon_max);
-  bounds.north = Angle::degrees((fixed)raster_tile_cache.lat_max);
-  bounds.south = Angle::degrees((fixed)raster_tile_cache.lat_min);
-
-  projection.set(bounds, raster_tile_cache.GetWidth() * 256,
-                 raster_tile_cache.GetHeight() * 256);
 }

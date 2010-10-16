@@ -137,6 +137,8 @@ OnCodeClicked(gcc_unused WndButton &button)
     XCSoarInterface::SetSettingsComputer().TeammateCodeValid = true;
     XCSoarInterface::SetSettingsComputer().TeamFlarmTracking = false;
   }
+  else
+    XCSoarInterface::SetSettingsComputer().TeammateCodeValid = false;
 }
 
 static void
@@ -182,15 +184,14 @@ OnCloseClicked(WindowControl * Sender)
   wf->SetModalResult(mrOK);
 }
 
-static int
+static void
 OnTimerNotify(WindowControl * Sender)
 {
   (void)Sender;
   Update();
-  return 0;
 }
 
-static CallBackTableEntry_t CallBackTable[] = {
+static CallBackTableEntry CallBackTable[] = {
   DeclareCallBackEntry(OnCloseClicked),
   DeclareCallBackEntry(OnTimerNotify),
   DeclareCallBackEntry(OnFlarmLockClicked),

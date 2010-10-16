@@ -37,7 +37,7 @@ Copyright_License {
 */
 
 #include "Asset.hpp"
-#include "Profile.hpp"
+#include "Profile/Profile.hpp"
 #include "UtilsText.hpp"
 #include "LogFile.hpp"
 #include "UtilsSystem.hpp"
@@ -51,7 +51,6 @@ Copyright_License {
 
 // Registration Data
 TCHAR strAssetNumber[MAX_LOADSTRING] = _T(""); //4G17DW31L0HY");
-TCHAR strRegKey[MAX_LOADSTRING] = _T("");
 
 #if defined(_WIN32_WCE) && !defined(GNAV)
 ModelType GlobalModelType = MODELTYPE_PNA_PNA;
@@ -247,6 +246,7 @@ InitAsset()
   CreateDirectoryIfAbsent(_T(""));  // RLD make sure the LocalPath folder actually exists
   CreateDirectoryIfAbsent(_T("logs"));
   CreateDirectoryIfAbsent(_T("config"));
+  CreateDirectoryIfAbsent(_T("cache"));
 
   if (is_altair())
     CreateDirectoryIfAbsent(_T("persist"));

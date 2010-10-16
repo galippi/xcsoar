@@ -48,15 +48,16 @@ Copyright_License {
 #include "Device/Port.hpp"
 
 #include <tchar.h>
+#include <windows.h> /* for Sleep() */
 
 static const char CtrlC = '\x03';
 
 class CaiGpsNavDevice : public AbstractDevice {
 private:
-  ComPort *port;
+  Port *port;
 
 public:
-  CaiGpsNavDevice(ComPort *_port):port(_port) {}
+  CaiGpsNavDevice(Port *_port):port(_port) {}
 
 public:
   virtual bool Open();
@@ -78,7 +79,7 @@ CaiGpsNavDevice::Open()
 }
 
 static Device *
-CaiGpsNavCreateOnComPort(ComPort *com_port)
+CaiGpsNavCreateOnPort(Port *com_port)
 {
   return new CaiGpsNavDevice(com_port);
 }
@@ -86,5 +87,5 @@ CaiGpsNavCreateOnComPort(ComPort *com_port)
 const struct DeviceRegister caiGpsNavDevice = {
   _T("CAI GPS-NAV"),
   drfGPS,
-  CaiGpsNavCreateOnComPort,
+  CaiGpsNavCreateOnPort,
 };

@@ -78,8 +78,7 @@ LXWP0(NMEAInputLine &line, NMEA_INFO *GPS_INFO, bool enable_baro)
    0 loger_stored (Y/N)
    1 IAS (kph) ----> Condor uses TAS!
    2 baroaltitude (m)
-   3 vario (m/s)
-   4-8 unknown
+   3-8 vario (m/s) (last 6 measurements in last second)
    9 heading of plane
   10 windcourse (deg)
   11 windspeed (kph)
@@ -118,6 +117,14 @@ LXWP0(NMEAInputLine &line, NMEA_INFO *GPS_INFO, bool enable_baro)
 static bool
 LXWP1(NMEAInputLine &line, NMEA_INFO *GPS_INFO)
 {
+  /*
+   * $LXWP1,
+   * serial number,
+   * instrument ID,
+   * software version,
+   * hardware version,
+   * license string
+   */
   (void)GPS_INFO;
   return true;
 }
@@ -125,7 +132,33 @@ LXWP1(NMEAInputLine &line, NMEA_INFO *GPS_INFO)
 static bool
 LXWP2(NMEAInputLine &line, NMEA_INFO *GPS_INFO)
 {
-  (void)GPS_INFO;
+  /*
+   * $LXWP2,
+   * maccready value, (m/s)
+   * ballast, (1.0 - 1.5)
+   * bugs, (0 - 100%)
+   * polar_a,
+   * polar_b,
+   * polar_c,
+   * audio volume
+   */
+
+  fixed value;
+  // MacCready value
+  if (line.read_checked(value))
+    GPS_INFO->MacCready = value;
+
+  // Ballast
+  line.skip();
+  /*
+  if (line.read_checked(value))
+    GPS_INFO->Ballast = value;
+  */
+
+  // Bugs
+  if (line.read_checked(value))
+    GPS_INFO->Bugs = fixed(100) - value;
+
   return true;
 }
 
@@ -149,7 +182,7 @@ LXDevice::ParseNMEA(const char *String, NMEA_INFO *GPS_INFO, bool enable_baro)
 }
 
 static Device *
-LXCreateOnComPort(ComPort *com_port)
+LXCreateOnPort(Port *com_port)
 {
   return new LXDevice();
 }
@@ -157,5 +190,5 @@ LXCreateOnComPort(ComPort *com_port)
 const struct DeviceRegister lxDevice = {
   _T("LX"),
   drfGPS | drfBaroAlt | drfSpeed | drfVario,
-  LXCreateOnComPort,
+  LXCreateOnPort,
 };

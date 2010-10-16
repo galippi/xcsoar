@@ -62,6 +62,8 @@ MapWindow::DrawTrail(Canvas &canvas) const
   if (!SettingsMap().TrailActive || task == NULL)
     return;
 
+  const MapWindowProjection &projection = render_projection;
+
   unsigned min_time = 0;
 
   if (projection.GetDisplayMode() == dmCircling) {
@@ -129,7 +131,7 @@ MapWindow::DrawTrail(Canvas &canvas) const
         -it->NettoVario/vario_min :
         it->NettoVario/vario_max ;
 
-      canvas.select(MapGfx.hSnailPens[fSnailColour(colour_vario)]);
+      canvas.select(Graphics::hSnailPens[fSnailColour(colour_vario)]);
       canvas.line_to(pt.x, pt.y);
     }
     last_time = it->time;

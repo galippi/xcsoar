@@ -200,32 +200,32 @@ ExpandTaskMacros(TCHAR *OutBuffer, size_t Size,
     switch (task_manager->get_task_advance().get_advance_state()) {
     case TaskAdvance::MANUAL:
       ReplaceInString(OutBuffer, _T("$(AdvanceArmed)"), 
-                      _T("Advance\n(manual)"), Size);
+                      _("Advance\n(manual)"), Size);
       invalid = true;
       break;
     case TaskAdvance::AUTO:
       ReplaceInString(OutBuffer, _T("$(AdvanceArmed)"), 
-                      _T("Advance\n(auto)"), Size);
+                      _("Advance\n(auto)"), Size);
       invalid = true;
       break;
     case TaskAdvance::START_ARMED:
       ReplaceInString(OutBuffer, _T("$(AdvanceArmed)"), 
-                      _T("Abort\nStart"), Size);
+                      _("Abort\nStart"), Size);
       invalid = false;
       break;
     case TaskAdvance::START_DISARMED:
       ReplaceInString(OutBuffer, _T("$(AdvanceArmed)"), 
-                      _T("Arm\nStart"), Size);
+                      _("Arm\nStart"), Size);
       invalid = false;
       break;
     case TaskAdvance::TURN_ARMED:
       ReplaceInString(OutBuffer, _T("$(AdvanceArmed)"), 
-                      _T("Abort\nTurn"), Size);
+                      _("Abort\nTurn"), Size);
       invalid = false;
       break;
     case TaskAdvance::TURN_DISARMED:
       ReplaceInString(OutBuffer, _T("$(AdvanceArmed)"), 
-                      _T("Arm\nTurn"), Size);
+                      _("Arm\nTurn"), Size);
       invalid = false;
       break;
     default:
@@ -246,11 +246,11 @@ ExpandTaskMacros(TCHAR *OutBuffer, size_t Size,
     if (task_manager->is_mode(TaskManager::MODE_GOTO)) {
       CondReplaceInString(calculated.common_stats.ordered_valid,
                           OutBuffer, _T("$(TaskAbortToggleActionName)"),
-                          _T("Resume"), _T("Abort"), Size);
+                          _("Resume"), _("Abort"), Size);
     } else 
       CondReplaceInString(calculated.common_stats.mode_abort,
                           OutBuffer, _T("$(TaskAbortToggleActionName)"),
-                          _T("Resume"), _T("Abort"), Size);
+                          _("Resume"), _("Abort"), Size);
   }
 
   return invalid;
@@ -313,44 +313,26 @@ ButtonLabel::ExpandMacros(const TCHAR *In, TCHAR *OutBuffer, size_t Size)
   }
 
   CondReplaceInString(logger.isLoggerActive(), OutBuffer,
-                      _T("$(LoggerActive)"), _T("Stop"),
-                      _T("Start"), Size);
+                      _T("$(LoggerActive)"), _("Stop"),
+                      _("Start"), Size);
 
   if (_tcsstr(OutBuffer, _T("$(SnailTrailToggleName)"))) {
     switch(SettingsMap().TrailActive) {
     case 0:
       ReplaceInString(OutBuffer, _T("$(SnailTrailToggleName)"),
-                      _T("Long"), Size);
+                      _("Long"), Size);
       break;
     case 1:
       ReplaceInString(OutBuffer, _T("$(SnailTrailToggleName)"),
-                      _T("Short"), Size);
+                      _("Short"), Size);
       break;
     case 2:
       ReplaceInString(OutBuffer, _T("$(SnailTrailToggleName)"),
-                      _T("Full"), Size);
+                      _("Full"), Size);
       break;
     case 3:
       ReplaceInString(OutBuffer, _T("$(SnailTrailToggleName)"),
-                      _T("Off"), Size);
-      break;
-    }
-  }
-
-  if (_tcsstr(OutBuffer, _T("$(VisualGlideToggleName)"))) {
-    switch(SettingsMap().VisualGlide) {
-    case 0:
-      ReplaceInString(OutBuffer, _T("$(VisualGlideToggleName)"),
-                      _T("Steady"), Size);
-      break;
-    case 1:
-      ReplaceInString(OutBuffer, _T("$(VisualGlideToggleName)"),
-                      SettingsMap().ExtendedVisualGlide ?
-                          _T("Moving") : _T("Off"), Size);
-      break;
-    case 2:
-      ReplaceInString(OutBuffer, _T("$(VisualGlideToggleName)"),
-                      _T("Off"), Size);
+                      _("Off"), Size);
       break;
     }
   }
@@ -359,11 +341,11 @@ ButtonLabel::ExpandMacros(const TCHAR *In, TCHAR *OutBuffer, size_t Size)
     switch(SettingsMap().OnAirSpace) {
     case 0:
       ReplaceInString(OutBuffer, _T("$(AirSpaceToggleName)"),
-                      _T("ON"), Size);
+                      _("ON"), Size);
       break;
     case 1:
       ReplaceInString(OutBuffer, _T("$(AirSpaceToggleName)"),
-                      _T("OFF"), Size);
+                      _("OFF"), Size);
       break;
     }
   }
@@ -396,40 +378,40 @@ ButtonLabel::ExpandMacros(const TCHAR *In, TCHAR *OutBuffer, size_t Size)
 
   CondReplaceInString(main_window.GetFullScreen(), OutBuffer,
                       _T("$(FullScreenToggleActionName)"),
-                      _T("Off"), _T("On"), Size);
+                      _("Off"), _("On"), Size);
   CondReplaceInString(SettingsMap().AutoZoom, OutBuffer,
 		                  _T("$(ZoomAutoToggleActionName)"),
-		                  _T("Manual"), _T("Auto"), Size);
+		                  _("Manual"), _("Auto"), Size);
   CondReplaceInString(SettingsMap().EnableTopology, OutBuffer,
                       _T("$(TopologyToggleActionName)"),
-                      _T("Off"), _T("On"), Size);
+                      _("Off"), _("On"), Size);
   CondReplaceInString(SettingsMap().EnableTerrain, OutBuffer,
                       _T("$(TerrainToggleActionName)"),
-                      _T("Off"), _T("On"), Size);
+                      _("Off"), _("On"), Size);
 
   if (_tcsstr(OutBuffer, _T("$(MapLabelsToggleActionName)"))) {
     switch(SettingsMap().DeclutterLabels) {
     case 0:
       ReplaceInString(OutBuffer, _T("$(MapLabelsToggleActionName)"),
-                      _T("MID"), Size);
+                      _("MID"), Size);
       break;
     case 1:
       ReplaceInString(OutBuffer, _T("$(MapLabelsToggleActionName)"),
-                      _T("OFF"), Size);
+                      _("OFF"), Size);
       break;
     case 2:
       ReplaceInString(OutBuffer, _T("$(MapLabelsToggleActionName)"),
-                      _T("ON"), Size);
+                      _("ON"), Size);
       break;
     }
   }
 
   CondReplaceInString(SettingsComputer().auto_mc,
                       OutBuffer, _T("$(MacCreadyToggleActionName)"),
-                      _T("Manual"), _T("Auto"), Size);
+                      _("Manual"), _("Auto"), Size);
   CondReplaceInString(SettingsMap().EnableAuxiliaryInfo,
                       OutBuffer, _T("$(AuxInfoToggleActionName)"),
-                      _T("Off"), _T("On"), Size);
+                      _("Off"), _("On"), Size);
 
   CondReplaceInString(SettingsMap().UserForceDisplayMode == dmCircling,
                       OutBuffer, _T("$(DispModeClimbShortIndicator)"),
@@ -473,16 +455,6 @@ ButtonLabel::ExpandMacros(const TCHAR *In, TCHAR *OutBuffer, size_t Size)
                       OutBuffer, _T("$(SnailTrailFullShortIndicator)"),
                       _T("(*)"), _T(""), Size);
 
-  CondReplaceInString(SettingsMap().VisualGlide == 0,
-                      OutBuffer, _T("$(VisualGlideOffShortIndicator)"),
-                      _T("(*)"), _T(""), Size);
-  CondReplaceInString(SettingsMap().VisualGlide == 1,
-                      OutBuffer, _T("$(VisualGlideLightShortIndicator)"),
-                      _T("(*)"), _T(""), Size);
-  CondReplaceInString(SettingsMap().VisualGlide == 2,
-                      OutBuffer, _T("$(VisualGlideHeavyShortIndicator)"),
-                      _T("(*)"), _T(""), Size);
-
   CondReplaceInString(SettingsMap().OnAirSpace == 0,
                       OutBuffer, _T("$(AirSpaceOffShortIndicator)"),
                       _T("(*)"), _T(""), Size);
@@ -492,7 +464,7 @@ ButtonLabel::ExpandMacros(const TCHAR *In, TCHAR *OutBuffer, size_t Size)
 
   CondReplaceInString(SettingsMap().EnableFLARMGauge != 0,
                       OutBuffer, _T("$(FlarmDispToggleActionName)"),
-                      _T("Off"), _T("On"), Size);
+                      _("Off"), _("On"), Size);
 
   return invalid;
 }

@@ -1,43 +1,45 @@
-/*
-Copyright_License {
+/******************************************************************************
+ *
+ * Project:  MapServer
+ * Purpose:  Implementation of bit array functions.
+ * Author:   Steve Lime and the MapServer team.
+ *
+ ******************************************************************************
+ * Copyright (c) 1996-2005 Regents of the University of Minnesota.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in 
+ * all copies of this Software or works derived from this Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ ******************************************************************************
+ *
+ * $Log$
+ * Revision 1.3  2005/06/14 16:03:33  dan
+ * Updated copyright date to 2005
+ *
+ * Revision 1.2  2004/10/21 04:30:55  frank
+ * Added standardized headers.  Added MS_CVSID().
+ *
+ */
 
-  XCSoar Glide Computer - http://www.xcsoar.org/
-  Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
+#include "map.h"
 
-	M Roberts (original release)
-	Robin Birch <robinb@ruffnready.co.uk>
-	Samuel Gisiger <samuel.gisiger@triadis.ch>
-	Jeff Goodenough <jeff@enborne.f2s.com>
-	Alastair Harrison <aharrison@magic.force9.co.uk>
-	Scott Penrose <scottp@dd.com.au>
-	John Wharington <jwharington@gmail.com>
-	Lars H <lars_hn@hotmail.com>
-	Rob Dunning <rob@raspberryridgesheepfarm.com>
-	Russell King <rmk@arm.linux.org.uk>
-	Paolo Ventafridda <coolwind@email.it>
-	Tobias Lohner <tobias@lohner-net.de>
-	Mirek Jezek <mjezek@ipplc.cz>
-	Max Kellermann <max@duempel.org>
-	Tobias Bieniek <tobias.bieniek@gmx.de>
-
-  This program is free software; you can redistribute it and/or
-  modify it under the terms of the GNU General Public License
-  as published by the Free Software Foundation; either version 2
-  of the License, or (at your option) any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-}
-*/
-
-#include "mapprimitive.h"
-#include "maperror.h"
+#ifdef SHAPELIB_DISABLED
+MS_CVSID("$Id: mapbits.c 4695 2005-06-14 16:03:36Z dan $")
+#endif /* SHAPELIB_DISABLED */
 
 #include <limits.h>
 #include <stdlib.h>
@@ -51,8 +53,8 @@ size_t msGetBitArraySize(int numbits)
 
 char *msAllocBitArray(int numbits)
 {
-  char *array = (char*)calloc((numbits + CHAR_BIT - 1) / CHAR_BIT, sizeof(char));
-
+  char *array = calloc((numbits + CHAR_BIT - 1) / CHAR_BIT, sizeof(char));
+  
   return(array);
 }
 
@@ -67,7 +69,7 @@ void msSetBit(char *array, int index, int value)
   array += index / CHAR_BIT;
   if (value)
     *array |= 1 << (index % CHAR_BIT);           /* set bit */
-  else
+  else    
     *array &= ~(1 << (index % CHAR_BIT));        /* clear bit */
 }
 

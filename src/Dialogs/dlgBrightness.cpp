@@ -37,13 +37,17 @@ Copyright_License {
 */
 
 #include "Dialogs/Internal.hpp"
+
+#ifdef GNAV
+
 #include "Units.hpp"
-#include "InputEvents.h"
 #include "Math/FastMath.h"
 #include "DataField/Base.hpp"
 #include "MainWindow.hpp"
 #include "Compatibility/string.h"
 #include "PeriodClock.hpp"
+#include "Components.hpp"
+#include "Hardware/AltairControl.hpp"
 
 static WndForm *wf=NULL;
 
@@ -60,28 +64,15 @@ static void UpdateValues() {
   if (!last_time.check_update(200))
     return;
 
-  TCHAR text[100];
   if (EnableAutoBrightness) {
-    InputEvents::eventDLLExecute(
-				 _T("altairplatform.dll SetAutoMode on"));
-    _stprintf(text,_T("altairplatform.dll SetAutoBrightness %03d"),
-	      BrightnessValue);
+    altair_control.SetBacklight(-100);
   } else {
-    InputEvents::eventDLLExecute(
-				 _T("altairplatform.dll SetAutoMode off"));
-    _stprintf(text,_T("altairplatform.dll SetManualBrightness %03d"),
-	      BrightnessValue);
+    altair_control.SetBacklight(BrightnessValue);
   }
-  InputEvents::eventDLLExecute(text);
-
 }
 
 static void OnAutoData(DataField *Sender, DataField::DataAccessKind_t Mode){
   switch(Mode){
-    case DataField::daGet:
-      Sender->SetAsBoolean(EnableAutoBrightness);
-    break;
-    case DataField::daPut:
     case DataField::daChange:
       EnableAutoBrightness = Sender->GetAsBoolean();
       UpdateValues();
@@ -93,10 +84,6 @@ static void OnAutoData(DataField *Sender, DataField::DataAccessKind_t Mode){
 static void OnBrightnessData(DataField *Sender,
 			     DataField::DataAccessKind_t Mode){
   switch(Mode){
-    case DataField::daGet:
-      Sender->SetAsInteger(BrightnessValue);
-    break;
-    case DataField::daPut:
     case DataField::daChange:
       BrightnessValue = Sender->GetAsInteger();
       UpdateValues();
@@ -105,7 +92,7 @@ static void OnBrightnessData(DataField *Sender,
 }
 
 
-static CallBackTableEntry_t CallBackTable[]={
+static CallBackTableEntry CallBackTable[]={
   DeclareCallBackEntry(OnAutoData),
   DeclareCallBackEntry(OnBrightnessData),
   DeclareCallBackEntry(OnCloseClicked),
@@ -139,3 +126,18 @@ void dlgBrightnessShowModal(void){
 
   delete wf;
 }
+
+#else /* !GNAV */
+
+#include "Dialogs/Message.hpp"
+
+void
+dlgBrightnessShowModal()
+{
+  /* XXX this is ugly, non-Altair platforms should not even see the
+     according menu item; not translating this superfluous message */
+  MessageBoxX(_T("Only available on Altair"), _T("Brightness"),
+              MB_OK|MB_ICONERROR);
+}
+
+#endif /* !GNAV */
