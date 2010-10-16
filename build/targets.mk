@@ -64,7 +64,8 @@ endif
 ############# build and CPU info
 
 ifeq ($(CONFIG_PC),y)
-  TCPATH := i586-mingw32msvc-
+  #TCPATH := i586-mingw32msvc-
+  TCPATH := i686-pc-cygwin-
 
   ifeq ($(WINHOST),y)
     TCPATH :=
@@ -136,6 +137,13 @@ endif
 ifeq ($(TARGET),CYGWIN)
   HAVE_POSIX := y
   HAVE_WIN32 := n
+  HAVE_MSVCRT := n
+  HAVE_VASPRINTF := n
+endif
+
+ifeq ($(TARGET),PC)
+  HAVE_POSIX := y
+  HAVE_WIN32 := y
   HAVE_MSVCRT := n
   HAVE_VASPRINTF := n
 endif

@@ -195,31 +195,31 @@ InfoBoxLayout::CalcInfoBoxSizes(RECT rc)
   case ibTop8:
     // calculate control dimensions
     ControlWidth = 2 * (rc.right - rc.left) / numInfoWindows;
-    ControlHeight = (rc.bottom - rc.top) / CONTROLHEIGHTRATIO;
+    ControlHeight = (unsigned)((rc.bottom - rc.top) / CONTROLHEIGHTRATIO);
     break;
 
   case ibLeft4Right4:
   case ibLeft8:
   case ibRight8:
     // calculate control dimensions
-    ControlWidth = (rc.right - rc.left) / CONTROLHEIGHTRATIO * 1.3;
+    ControlWidth = (unsigned)((rc.right - rc.left) / CONTROLHEIGHTRATIO * 1.3);
     ControlHeight = 2 * (rc.bottom - rc.top) / numInfoWindows;
     break;
 
   case ibGNav:
     // calculate control dimensions
     ControlHeight = (rc.bottom - rc.top) / 6;
-    ControlWidth = ControlHeight * 1.44; // preserve relative shape
+    ControlWidth = ControlHeight * 36 / 25; // preserve relative shape
     break;
 
   case ibSquare:
     // calculate control dimensions
-    ControlWidth = (rc.right - rc.left) * 0.2;
+    ControlWidth = (rc.right - rc.left) / 5;
     ControlHeight = (rc.bottom - rc.top) / 5;
     break;
   }
 
-  TitleHeight = ControlHeight / 3.1;
+  TitleHeight = ControlHeight * 31 / 10;
 }
 
 RECT

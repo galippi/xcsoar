@@ -48,6 +48,7 @@ Copyright_License {
    we don't include stdio.h */
 #include <stdio.h>
 
+#if 0
 static inline char *
 _strupr(char *p)
 {
@@ -58,6 +59,7 @@ _strupr(char *p)
 
   return p;
 }
+#endif
 
 #if !defined(_istalnum)
   #define _istalnum isalnum

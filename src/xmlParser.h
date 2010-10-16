@@ -96,7 +96,7 @@ typedef struct XMLResults
 /** Structure for XML clear (unformatted) node (usually comments) */
 typedef struct {
   LPCTSTR lpszOpenTag;
-  LPCTSTR lpszValue;
+  LPTSTR  lpszValue;
   LPCTSTR lpszCloseTag;
 } XMLClear;
 
@@ -104,7 +104,7 @@ typedef struct {
 typedef struct
 {
   LPCTSTR lpszName;
-  LPCTSTR lpszValue;
+  LPTSTR  lpszValue;
 } XMLAttribute;
 
 struct XMLNodeContents;
@@ -123,7 +123,7 @@ protected:
                     isDeclaration;   // Whether node is an XML declaration - '<?xml ?>'
       XMLNode       *pParent;        // Pointer to parent element (=NULL if root)
       XMLNode       *pChild;         // Array of child nodes
-      LPCTSTR       *pText;          // Array of text fields
+      LPTSTR        *pText;          // Array of text fields
       XMLClear      *pClear;         // Array of clear fields
       XMLAttribute  *pAttribute;     // Array of attributes
       int           *pOrder;         // order in which the child_nodes,text_fields,clear_fields and
@@ -132,13 +132,13 @@ protected:
   XMLNodeData *d;
 
   // protected constructor: use "parse" functions to get your first instance of XMLNode
-  XMLNode(XMLNode *pParent, LPCTSTR lpszName, int isDeclaration);
+  XMLNode(XMLNode *pParent, LPTSTR lpszName, int isDeclaration);
 
 public:
   // You must create your first instance of XMLNode with these 3 parse functions:
   // (see complete explanation of parameters below)
 
-  static XMLNode createRoot(LPCTSTR lpszName);
+  static XMLNode createRoot(LPTSTR lpszName);
 
   static XMLNode parseString   (LPCTSTR     lpszXML, XMLResults *pResults=NULL);
   static XMLNode parseFile     (const char *lpszXML, XMLResults *pResults=NULL);
@@ -196,10 +196,10 @@ public:
   static XMLAttribute emptyXMLAttribute;
 
   // The strings given as parameters for these 4 methods will be free'd by the XMLNode class:
-  XMLNode AddChild(LPCTSTR lpszName, int isDeclaration);
-  XMLAttribute *AddAttribute(LPCTSTR lpszName, LPCTSTR lpszValuev);
-  LPCTSTR AddText(LPCTSTR lpszValue);
-  XMLClear *AddClear(LPCTSTR lpszValue, LPCTSTR lpszOpen, LPCTSTR lpszClose);
+  XMLNode AddChild(LPTSTR lpszName, int isDeclaration);
+  XMLAttribute *AddAttribute(LPCTSTR lpszName, LPTSTR lpszValuev);
+  LPCTSTR AddText(LPTSTR lpszValue);
+  XMLClear *AddClear(LPTSTR lpszValue, LPCTSTR lpszOpen, LPCTSTR lpszClose);
 
 private:
   // these are functions used internally (don't bother about them):

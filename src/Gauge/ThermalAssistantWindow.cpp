@@ -208,13 +208,13 @@ ThermalAssistantWindow::PaintRadarBackground(Canvas &canvas) const
                             sizeof(lift_string) / sizeof(lift_string[0]));
   SIZE s = canvas.text_size(lift_string);
   canvas.text(mid.x - s.cx / 2,
-              mid.y + radius - s.cy * 0.75, lift_string);
+              mid.y + radius - s.cy * 3 / 4, lift_string);
 
   Units::FormatUserVSpeed(fixed_zero, lift_string,
                             sizeof(lift_string) / sizeof(lift_string[0]));
   s = canvas.text_size(lift_string);
   canvas.text(mid.x - s.cx / 2,
-              mid.y + radius / 2 - s.cy * 0.75, lift_string);
+              mid.y + radius / 2 - s.cy * 3 / 4, lift_string);
 
   canvas.background_transparent();
 }

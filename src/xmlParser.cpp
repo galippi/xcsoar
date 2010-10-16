@@ -632,12 +632,12 @@ LPCTSTR XMLNode::getError(XMLError error)
 }
 
 
-XMLNode XMLNode::createRoot(LPCTSTR lpszName)
+XMLNode XMLNode::createRoot(LPTSTR lpszName)
 {
   return XMLNode(NULL, lpszName, false);
 }
 
-XMLNode::XMLNode(XMLNode *pParent, LPCTSTR lpszName, int isDeclaration)
+XMLNode::XMLNode(XMLNode *pParent, LPTSTR lpszName, int isDeclaration)
 {
   d = (XMLNodeData*)malloc(sizeof(XMLNodeData));
   assert(d);
@@ -689,7 +689,7 @@ XMLNode::addToOrder(int index, int type)
 
 // Add a child node to the given element.
 XMLNode
-XMLNode::AddChild(LPCTSTR lpszName, int isDeclaration)
+XMLNode::AddChild(LPTSTR lpszName, int isDeclaration)
 {
   if (!lpszName)
     return emptyXMLNode;
@@ -706,7 +706,7 @@ XMLNode::AddChild(LPCTSTR lpszName, int isDeclaration)
 
 // Add an attribute to an element.
 XMLAttribute *
-XMLNode::AddAttribute(LPCTSTR lpszName, LPCTSTR lpszValuev)
+XMLNode::AddAttribute(LPCTSTR lpszName, LPTSTR lpszValuev)
 {
   if (!lpszName)
     return &emptyXMLAttribute;
@@ -723,14 +723,14 @@ XMLNode::AddAttribute(LPCTSTR lpszName, LPCTSTR lpszValuev)
 }
 
 // Add text to the element.
-LPCTSTR XMLNode::AddText(LPCTSTR lpszValue)
+LPCTSTR XMLNode::AddText(LPTSTR lpszValue)
 {
   if (!lpszValue)
     return NULL;
 
   int nt = d->nText;
-  d->pText = (LPCTSTR*)myRealloc(d->pText, (nt + 1), memoryIncrease,
-                                 sizeof(LPTSTR));
+  d->pText = (LPTSTR*)myRealloc(d->pText, (nt + 1), memoryIncrease,
+                                sizeof(LPTSTR));
   d->pText[nt] = lpszValue;
   addToOrder(nt, eNodeText);
   d->nText++;
@@ -738,7 +738,7 @@ LPCTSTR XMLNode::AddText(LPCTSTR lpszValue)
 }
 
 // Add clear (unformatted) text to the element.
-XMLClear *XMLNode::AddClear(LPCTSTR lpszValue, LPCTSTR lpszOpen, LPCTSTR lpszClose)
+XMLClear *XMLNode::AddClear(LPTSTR lpszValue, LPCTSTR lpszOpen, LPCTSTR lpszClose)
 {
   if (!lpszValue)
     return &emptyXMLClear;
@@ -939,8 +939,8 @@ XMLNode::ParseXMLElement(void *pa)
                                                            memoryIncrease,
                                                            sizeof(XMLAttribute));
                 if (d->nText > 0)
-                  d->pText = (LPCTSTR*)myRealloc(d->pText, d->nText,
-                                                 memoryIncrease, sizeof(LPTSTR));
+                  d->pText = (LPTSTR*)myRealloc(d->pText, d->nText,
+                                                memoryIncrease, sizeof(LPTSTR));
                 if (d->nClear > 0)
                   d->pClear = (XMLClear *)myRealloc(d->pClear, d->nClear,
                                                     memoryIncrease,
@@ -1837,13 +1837,13 @@ XMLNode::destroyCurrentBuffer(XMLNodeData *d)
       free((void*)d->pClear[i].lpszValue);
     free(d->pClear);
     for (i = 0; i < d->nAttribute; i++) {
-      free((void*)d->pAttribute[i].lpszName);
+      //free((void*)d->pAttribute[i].lpszName);
       if (d->pAttribute[i].lpszValue)
-        free((void*)d->pAttribute[i].lpszValue);
+        {}//free((void*)d->pAttribute[i].lpszValue);
     }
     free(d->pAttribute);
     free(d->pOrder);
-    free((void*)d->lpszName);
+    //free((void*)d->lpszName);
     free(d);
   }
 }

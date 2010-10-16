@@ -77,7 +77,7 @@ namespace Registry {
     return true;
   }
 
-#ifndef HAVE_POSIX /* DWORD==unsigned on WINE, would be duplicate */
+#if !defined(HAVE_POSIX) || defined(__CYGWIN__) /* DWORD==unsigned on WINE, would be duplicate */
   static inline bool Get(const TCHAR *key, unsigned &value)
   {
     DWORD temp;
@@ -128,7 +128,7 @@ namespace Registry {
     return Set(key, DWORD(value));
   }
 
-  #ifndef HAVE_POSIX /* DWORD==unsigned on WINE, would be duplicate */
+  #if !defined(HAVE_POSIX) || defined(__CYGWIN__) /* DWORD==unsigned on WINE, would be duplicate */
   static inline bool Set(const TCHAR *key, unsigned value)
   {
     return Set(key, DWORD(value));
