@@ -48,7 +48,7 @@ Copyright_License {
 
 static const StatusMessageSTRUCT StatusMessageDefaults[] = {
 #include "Status_defaults.cpp"
-  { NULL }
+  { NULL, NULL, false, false, 0 }
 };
 
 StatusMessageList::StatusMessageList()

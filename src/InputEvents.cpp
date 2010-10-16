@@ -602,7 +602,7 @@ static const struct string_to_key string_to_key[] = {
   { _T("DOWN"), VK_DOWN },
   { _T("RETURN"), VK_RETURN },
   { _T("ESCAPE"), VK_ESCAPE },
-  { NULL }
+  { NULL, 0 }
 };
 
 unsigned
