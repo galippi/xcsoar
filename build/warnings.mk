@@ -1,7 +1,9 @@
 WARNINGS = -Wall -Wextra
 WARNINGS += -Wwrite-strings -Wcast-qual -Wpointer-arith -Wsign-compare
 WARNINGS += -Wundef
+ifneq ($(TARGET),CYGWIN)
 WARNINGS += -Wmissing-declarations
+endif
 
 ifneq ($(TARGET),ANDROID)
 WARNINGS += -Wredundant-decls
@@ -12,7 +14,9 @@ CXXFLAGS += -Wmissing-noreturn
 
 # disable some warnings, we're not ready for them yet
 CXXFLAGS += -Wno-unused-parameter -Wno-format -Wno-switch -Wno-non-virtual-dtor
+ifneq ($(TARGET),CYGWIN)
 CXXFLAGS += -Wno-missing-field-initializers 
+endif
 CXXFLAGS += -Wcast-align
 
 # plain C warnings
