@@ -23,7 +23,6 @@ Copyright_License {
 
 #include "InfoBoxes/Content/Factory.hpp"
 
-#include "InfoBoxes/Content/Base.hpp"
 #include "InfoBoxes/Content/Alternate.hpp"
 #include "InfoBoxes/Content/Altitude.hpp"
 #include "InfoBoxes/Content/Direction.hpp"
@@ -35,10 +34,6 @@ Copyright_License {
 #include "InfoBoxes/Content/Thermal.hpp"
 #include "InfoBoxes/Content/Time.hpp"
 #include "InfoBoxes/Content/Weather.hpp"
-
-#include "Language.hpp"
-
-#include <stddef.h>
 
 // Groups:
 //   Altitude 0,1,20,33,70
@@ -753,28 +748,28 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
 };
 
 InfoBoxContent*
-InfoBoxFactory::Create(unsigned InfoBoxType)
+InfoBoxFactory::Create(const c_InfoBox &InfoBoxType)
 {
-  switch (InfoBoxType) {
-  case 0:
+  switch (InfoBoxType.type) {
+  case c_InfoBox::e_HeightGPS:
     return new InfoBoxContentAltitudeGPS();
-  case 1:
+  case c_InfoBox::e_HeightAGL:
     return new InfoBoxContentAltitudeAGL();
-  case 2:
+  case c_InfoBox::e_Thermal_30s:
     return new InfoBoxContentThermal30s();
-  case 3:
+  case c_InfoBox::e_Bearing:
     return new InfoBoxContentBearing();
-  case 4:
+  case c_InfoBox::e_LD_Instantaneous:
     return new InfoBoxContentLDInstant();
-  case 5:
+  case c_InfoBox::e_LD_Cruise:
     return new InfoBoxContentLDCruise();
-  case 6:
+  case c_InfoBox::e_Speed_GPS:
     return new InfoBoxContentSpeedGround();
-  case 7:
+  case c_InfoBox::e_TL_Avg:
     return new InfoBoxContentThermalLastAvg();
-  case 8:
+  case c_InfoBox::e_TL_Gain:
     return new InfoBoxContentThermalLastGain();
-  case 9:
+  case c_InfoBox::e_TL_Time:
     return new InfoBoxContentThermalLastTime();
   case 10:
     return new InfoBoxContentMacCready();
@@ -910,7 +905,7 @@ InfoBoxFactory::Create(unsigned InfoBoxType)
     return new InfoBoxContentCPULoad();
   case 76:
     return new InfoBoxContentNextAltitudeArrival();
+  default:
+    return NULL;
   }
-
-  return NULL;
 }
