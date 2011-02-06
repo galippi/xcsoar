@@ -23,7 +23,6 @@ Copyright_License {
 
 #include "InfoBoxes/Content/Factory.hpp"
 
-#include "InfoBoxes/Content/Base.hpp"
 #include "InfoBoxes/Content/Alternate.hpp"
 #include "InfoBoxes/Content/Altitude.hpp"
 #include "InfoBoxes/Content/Direction.hpp"
@@ -36,10 +35,6 @@ Copyright_License {
 #include "InfoBoxes/Content/Thermal.hpp"
 #include "InfoBoxes/Content/Time.hpp"
 #include "InfoBoxes/Content/Weather.hpp"
-
-#include "Language.hpp"
-
-#include <stddef.h>
 
 // Groups:
 //   Altitude: e_HeightGPS,e_HeightAGL,e_H_Terrain,e_H_Baro,e_H_QFE,e_FlightLevel
@@ -97,7 +92,7 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
     N_("L/D Inst"),
     N_("Instantaneous glide ratio, given by the ground speed divided by the vertical speed (GPS speed) over the last 20 seconds. Negative values indicate climbing cruise. If the vertical speed is close to zero, the displayed value is '---'."),
     e_LD_Cruise, // LD Cruise
-    71, // LD Avg
+    e_LD_Avg, // LD Avg
   },
 
   // 5
@@ -160,7 +155,7 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
     N_("WP Dist"),
     N_("The distance to the currently selected waypoint. For AAT tasks, this is the distance to the target within the AAT sector."),
     e_WP_AltDiff, // WP AltD
-    73, // OLC
+    e_OC_Distance, // OLC
   },
 
   // 12
@@ -168,7 +163,7 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
     N_("Next Altitude Difference"),
     N_("WP AltD"),
     N_("Arrival altitude at the next waypoint relative to the safety arrival altitude."),
-    76, // WP AltA
+    e_WP_H, // WP AltA
     e_WP_Distance, // WP Dist
   },
 
@@ -757,8 +752,8 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
     N_("Free RAM"),
     N_("Free RAM"),
     N_("Free RAM as reported by OS."),
-    75, // CPU Load
-    75, // CPU Load
+    e_CPU_Load, // CPU Load
+    e_CPU_Load, // CPU Load
   },
 
   // 78
@@ -766,13 +761,13 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
     N_("Flight Level"),
     N_("Flight Level"),
     N_("Pressure Altitude given as Flight Level. Only available if barometric altitude available and correct QNH set."),
-    0, // H GPS
-    70, // QFE GPS
+    e_HeightGPS, // H GPS
+    e_H_QFE, // QFE GPS
   },
 };
 
 InfoBoxContent*
-InfoBoxFactory::Create(unsigned InfoBoxType)
+InfoBoxFactory::Create(t_InfoBox InfoBoxType)
 {
   switch (InfoBoxType) {
   case e_HeightGPS:
@@ -933,7 +928,7 @@ InfoBoxFactory::Create(unsigned InfoBoxType)
     return new InfoBoxContentFreeRAM();
   case 78:
     return new InfoBoxContentFlightLevel();
+  default:
+    return NULL;
   }
-
-  return NULL;
 }

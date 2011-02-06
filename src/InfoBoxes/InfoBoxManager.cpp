@@ -50,6 +50,8 @@ Copyright_License {
 
 #include <algorithm>
 
+using namespace InfoBoxFactory;
+
 namespace InfoBoxManager
 {
   InfoBoxLayout::Layout layout;
@@ -223,7 +225,7 @@ unsigned
 InfoBoxManager::GetCurrentType(unsigned box)
 {
   unsigned retval = GetType(box, GetCurrentPanel());
-  return std::min(InfoBoxFactory::NUM_TYPES - 1, retval);
+  return std::min((unsigned)NUM_TYPES - 1, retval);
 }
 
 bool
@@ -253,17 +255,18 @@ InfoBoxManager::SetCurrentType(unsigned box, unsigned type)
 void
 InfoBoxManager::Event_Change(int i)
 {
-  int j = 0, k;
+  t_InfoBox j = e_HeightGPS;
+  t_InfoBox k;
 
   int InfoFocus = GetFocused();
   if (InfoFocus < 0)
     return;
 
-  k = GetCurrentType(InfoFocus);
+  k = (t_InfoBox)GetCurrentType(InfoFocus);
   if (i > 0)
-    j = InfoBoxFactory::GetNext(k);
+    j = GetNext(k);
   else if (i < 0)
-    j = InfoBoxFactory::GetPrevious(k);
+    j = GetPrevious(k);
 
   // TODO code: if i==0, go to default or reset
 
@@ -294,8 +297,8 @@ InfoBoxManager::DisplayInfoBox()
     bool needupdate = ((DisplayType[i] != DisplayTypeLast[i]) || first);
 
     if (needupdate) {
-      InfoBoxes[i]->SetTitle(gettext(InfoBoxFactory::GetCaption(DisplayType[i])));
-      InfoBoxes[i]->SetContentProvider(InfoBoxFactory::Create(DisplayType[i]));
+      InfoBoxes[i]->SetTitle(gettext(GetCaption((t_InfoBox)DisplayType[i])));
+      InfoBoxes[i]->SetContentProvider(Create((t_InfoBox)DisplayType[i]));
       InfoBoxes[i]->SetID(i);
     }
 
@@ -547,9 +550,9 @@ OnInfoBoxHelp(unsigned item)
   int type = (*info_box_combo_list)[item].DataFieldIndex;
 
   TCHAR caption[100];
-  _stprintf(caption, _T("%s: %s"), _("InfoBox"), gettext(InfoBoxFactory::GetName(type)));
+  _stprintf(caption, _T("%s: %s"), _("InfoBox"), gettext(GetName((t_InfoBox)type)));
 
-  const TCHAR* text = InfoBoxFactory::GetDescription(type);
+  const TCHAR* text = InfoBoxFactory::GetDescription((t_InfoBox)type);
   if (text)
     dlgHelpShowModal(XCSoarInterface::main_window, caption, gettext(text));
   else
@@ -581,7 +584,7 @@ InfoBoxManager::SetupFocused(const int id)
 
   ComboList list;
   for (unsigned i = 0; i < InfoBoxFactory::NUM_TYPES; i++)
-    list.Append(i, gettext(InfoBoxFactory::GetName(i)));
+    list.Append(i, gettext(InfoBoxFactory::GetName((t_InfoBox)i)));
 
   list.Sort();
   list.ComboPopupItemSavedIndex = list.LookUp(old_type);
