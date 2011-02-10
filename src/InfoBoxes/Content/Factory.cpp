@@ -91,7 +91,7 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
     N_("L/D Inst"),
     N_("Instantaneous glide ratio, given by the ground speed divided by the vertical speed (GPS speed) over the last 20 seconds. Negative values indicate climbing cruise. If the vertical speed is close to zero, the displayed value is '---'."),
     c_InfoBox::e_LD_Cruise, // LD Cruise
-    71, // LD Avg
+    c_InfoBox::e_LD_Avg, // LD Avg
   },
 
   // 5
@@ -154,7 +154,7 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
     N_("WP Dist"),
     N_("The distance to the currently selected waypoint. For AAT tasks, this is the distance to the target within the AAT sector."),
     c_InfoBox::e_WP_AltDiff, // WP AltD
-    73, // OLC
+    c_InfoBox::e_OC_Distance, // OLC
   },
 
   // 12
@@ -162,7 +162,7 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
     N_("Next Altitude Difference"),
     N_("WP AltD"),
     N_("Arrival altitude at the next waypoint relative to the safety arrival altitude."),
-    76, // WP AltA
+    c_InfoBox::e_WP_H, // WP AltA
     c_InfoBox::e_WP_Distance, // WP Dist
   },
 
