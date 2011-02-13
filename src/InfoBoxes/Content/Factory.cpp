@@ -924,9 +924,9 @@ InfoBoxFactory::Create(t_InfoBox InfoBoxType)
     return new InfoBoxContentCPULoad();
   case e_WP_H:
     return new InfoBoxContentNextAltitudeArrival();
-  case 77:
+  case e_Free_RAM:
     return new InfoBoxContentFreeRAM();
-  case 78:
+  case e_FlightLevel:
     return new InfoBoxContentFlightLevel();
   default:
     return NULL;
