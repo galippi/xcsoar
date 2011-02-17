@@ -47,6 +47,8 @@ Copyright_License {
 
 #include <algorithm>
 
+using namespace InfoBoxFactory;
+
 namespace InfoBoxManager
 {
   /** the window for displaying infoboxes full-screen */
@@ -244,8 +246,8 @@ InfoBoxManager::SetTypes(unsigned box, unsigned types)
 unsigned
 InfoBoxManager::GetCurrentType(unsigned box)
 {
-  unsigned retval = GetType(box, GetCurrentMode());
-  return std::min(InfoBoxFactory::NUM_TYPES - 1, retval);
+  c_InfoBox retval = GetType(box, GetCurrentMode());
+  return retval.min(InfoBoxFactory::NUM_TYPES - 1);
 }
 
 bool
