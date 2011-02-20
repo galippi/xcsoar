@@ -60,7 +60,7 @@ TerrainShading(const short illum, BYTE &r, BYTE &g, BYTE &b)
 }
 
 RasterRenderer::RasterRenderer()
-  :quantisation_pixels(2),
+  :quantisation_pixels(1),
    image(NULL)
 {
   // scale quantisation_pixels so resolution is not too high on large displays
