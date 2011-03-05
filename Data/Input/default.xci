@@ -512,14 +512,14 @@ mode=Display1
 type=key
 data=6
 event=Zoom in
-label=Zoom\nIn
+label=Zoom\nin
 location=5
 
 mode=Display1
 type=key
 data=7
 event=Zoom out
-label=Zoom\nOut
+label=Zoom\nout
 location=6
 
 mode=Display1
