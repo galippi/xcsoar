@@ -50,6 +50,8 @@ Copyright_License {
 
 #include <algorithm>
 
+using namespace InfoBoxFactory;
+
 namespace InfoBoxManager
 {
   InfoBoxLayout::Layout layout;
@@ -223,7 +225,7 @@ unsigned
 InfoBoxManager::GetCurrentType(unsigned box)
 {
   unsigned retval = GetType(box, GetCurrentPanel());
-  return std::min(InfoBoxFactory::NUM_TYPES - 1, retval);
+  return std::min(NUM_TYPES - 1, (int)retval);
 }
 
 const TCHAR*
@@ -288,8 +290,8 @@ InfoBoxManager::DisplayInfoBox()
   if (InfoBoxesHidden)
     return;
 
-  int DisplayType[InfoBoxPanelConfig::MAX_INFOBOXES];
-  static int DisplayTypeLast[InfoBoxPanelConfig::MAX_INFOBOXES];
+  t_InfoBox DisplayType[InfoBoxPanelConfig::MAX_INFOBOXES];
+  static t_InfoBox DisplayTypeLast[InfoBoxPanelConfig::MAX_INFOBOXES];
 
   // JMW note: this is updated every GPS time step
 
@@ -298,7 +300,7 @@ InfoBoxManager::DisplayInfoBox()
     // should apply to the function DoCalculationsSlow()
     // Do not put calculations here!
 
-    DisplayType[i] = GetCurrentType(i);
+    DisplayType[i] = (t_InfoBox)GetCurrentType(i);
 
     bool needupdate = ((DisplayType[i] != DisplayTypeLast[i]) || first);
 
@@ -599,7 +601,7 @@ InfoBoxManager::SetupFocused(const int id)
   int old_type = GetType(i, panel);
 
   ComboList list;
-  for (unsigned i = 0; i < InfoBoxFactory::NUM_TYPES; i++)
+  for (unsigned i = 0; i < NUM_TYPES; i++)
     list.Append(i, gettext(InfoBoxFactory::GetName(i)));
 
   list.Sort();
