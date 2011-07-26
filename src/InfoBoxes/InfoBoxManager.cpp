@@ -288,7 +288,6 @@ InfoBoxManager::DisplayInfoBox()
   if (InfoBoxesHidden)
     return;
 
-  static bool first = true;
   static int DisplayTypeLast[InfoBoxPanelConfig::MAX_INFOBOXES];
 
   // JMW note: this is updated every GPS time step
@@ -306,12 +305,10 @@ InfoBoxManager::DisplayInfoBox()
       InfoBoxes[i]->SetTitle(gettext(InfoBoxFactory::GetCaption(DisplayType)));
       InfoBoxes[i]->SetContentProvider(InfoBoxFactory::Create(DisplayType));
       InfoBoxes[i]->SetID(i);
+      DisplayTypeLast[i] = DisplayType;
     }
 
     InfoBoxes[i]->UpdateContent();
-
-    DisplayTypeLast[i] = DisplayType;
-
   }
 
   Paint();
