@@ -328,7 +328,6 @@ InfoBoxManager::DisplayInfoBox()
   if (InfoBoxesHidden)
     return;
 
-  int DisplayType[MAXINFOWINDOWS];
   static bool first = true;
   static int DisplayTypeLast[MAXINFOWINDOWS];
 
@@ -339,18 +338,18 @@ InfoBoxManager::DisplayInfoBox()
     // should apply to the function DoCalculationsSlow()
     // Do not put calculations here!
 
-    DisplayType[i] = GetCurrentType(i);
+    int DisplayType = GetCurrentType(i);
 
-    bool needupdate = ((DisplayType[i] != DisplayTypeLast[i]) || first);
+    bool needupdate = ((DisplayType != DisplayTypeLast[i]) || first);
 
     if (needupdate) {
-      InfoBoxes[i]->SetTitle(gettext(InfoBoxFactory::GetCaption(DisplayType[i])));
-      InfoBoxes[i]->SetContentProvider(InfoBoxFactory::Create(DisplayType[i]));
+      InfoBoxes[i]->SetTitle(gettext(InfoBoxFactory::GetCaption(DisplayType)));
+      InfoBoxes[i]->SetContentProvider(InfoBoxFactory::Create(DisplayType));
+      DisplayTypeLast[i] = DisplayType;
     }
 
     InfoBoxes[i]->UpdateContent();
 
-    DisplayTypeLast[i] = DisplayType[i];
   }
 
   Paint();
