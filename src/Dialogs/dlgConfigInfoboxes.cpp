@@ -178,7 +178,7 @@ InfoBoxPreview::on_paint(Canvas &canvas)
   canvas.black_pen();
   canvas.rectangle(0, 0, canvas.get_width() - 1, canvas.get_height() - 1);
 
-  unsigned type = data.infoBoxID[i];
+  InfoBoxFactory::t_InfoBox type = data.infoBoxID[i];
   const TCHAR *caption = type < InfoBoxFactory::NUM_TYPES
     ? InfoBoxFactory::GetCaption(type)
     : NULL;

@@ -165,7 +165,7 @@ namespace InfoBoxFactory
    * git in the small #InfoBoxWindow.
    */
   static inline const TCHAR *
-  GetCaption(unsigned type)
+  GetCaption(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 
@@ -176,23 +176,23 @@ namespace InfoBoxFactory
    * Returns the long description (help text) of the info box type.
    */
   static inline const TCHAR *
-  GetDescription(unsigned type)
+  GetDescription(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 
     return MetaData[type].description;
   }
 
-  static inline unsigned
-  GetNext(unsigned type)
+  static inline t_InfoBox
+  GetNext(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 
     return MetaData[type].next;
   }
 
-  static inline unsigned
-  GetPrevious(unsigned type)
+  static inline t_InfoBox
+  GetPrevious(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 

@@ -262,7 +262,7 @@ InfoBoxManager::SetCurrentType(unsigned box, unsigned type)
 void
 InfoBoxManager::Event_Change(int i)
 {
-  int j = 0, k;
+  InfoBoxFactory::t_InfoBox j = InfoBoxFactory::MIN_TYPE_VAL, k;
 
   int InfoFocus = GetFocused();
   if (InfoFocus < 0)
