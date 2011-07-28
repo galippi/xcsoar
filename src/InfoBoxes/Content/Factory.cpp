@@ -860,7 +860,7 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
 };
 
 InfoBoxContent*
-InfoBoxFactory::Create(unsigned InfoBoxType)
+InfoBoxFactory::Create(t_InfoBox InfoBoxType)
 {
   switch (InfoBoxType) {
   case e_HeightGPS:
@@ -1041,7 +1041,7 @@ InfoBoxFactory::Create(unsigned InfoBoxType)
     return new InfoBoxContentNextETEVMG();
   case e_Horizon:
     return new InfoBoxContentHorizon();
+  default:
+    return NULL;
   }
-
-  return NULL;
 }

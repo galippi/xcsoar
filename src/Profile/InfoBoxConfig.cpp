@@ -25,19 +25,20 @@ Copyright_License {
 #include "Profile/Profile.hpp"
 #include "Language/Language.hpp"
 
+using namespace InfoBoxFactory;
 
 InfoBoxPanelConfig::InfoBoxPanelConfig() : modified(false)
 {
   name[0] = 0;
   for (unsigned int i = 0; i < MAX_INFOBOXES; i++)
-    infoBoxID[i] = 0;
+    infoBoxID[i] = InfoBoxFactory::MIN_TYPE_VAL;
 }
 
 
 bool InfoBoxPanelConfig::IsEmpty() const
 {
   for (unsigned int i = 0; i < MAX_INFOBOXES; i++)
-    if (infoBoxID[i] != 0)
+    if (infoBoxID[i] != InfoBoxFactory::MIN_TYPE_VAL)
       return false;
   return true;
 }
@@ -47,11 +48,15 @@ InfoBoxManagerConfig::InfoBoxManagerConfig()
 {
   static const unsigned int DFLT_CONFIG_BOXES = 9;
   static const unsigned int DFLT_CONFIG_PANELS = 4;
-  static const int dflt_IDs[DFLT_CONFIG_PANELS][DFLT_CONFIG_BOXES] = {
-    { 0x0E, 0x0B, 0x16, 0x31, 0x30, 0x21, 0x07, 0x0F, 0x2D },
-    { 0x0E, 0x0B, 0x03, 0x2B, 0x30, 0x21, 0x11, 0x0F, 0x2D },
-    { 0x0E, 0x12, 0x03, 0x2B, 0x26, 0x21, 0x29, 0x0F, 0x2D },
-    { 0x34, 0x33, 0x31, 0x00, 0x06, 0x19, 0x27, 0x25, 0x1A }
+  static const InfoBoxFactory::t_InfoBox dflt_IDs[DFLT_CONFIG_PANELS][DFLT_CONFIG_BOXES] = {
+    { e_WP_Name,       e_WP_Distance,     e_Thermal_Gain, e_HumidityRel, e_Temperature,
+      e_H_Baro,        e_TL_Avg,          e_Fin_AltDiff,  e_Fin_TimeLocal },
+    { e_WP_Name,       e_WP_Distance,     e_Bearing,      e_Act_Speed,   e_Temperature,
+      e_H_Baro,        e_SpeedTaskAvg,    e_Fin_AltDiff,  e_Fin_TimeLocal },
+    { e_WP_Name,       e_Fin_Distance,    e_Bearing,      e_Act_Speed,   e_WP_LD,
+      e_H_Baro,        e_Fin_Time,        e_Fin_AltDiff,  e_Fin_TimeLocal },
+    { e_AA_SpeedAvg,   e_Fin_AA_Distance, e_HumidityRel,  e_HeightGPS,   e_Speed_GPS,
+      e_WindSpeed_Est, e_TimeLocal,       e_Load_G,       e_WindBearing_Est }
   };
 
   assert(MAX_INFOBOX_PANELS >= DFLT_CONFIG_PANELS);
@@ -80,10 +85,10 @@ GetV60InfoBoxManagerConfig(InfoBoxManagerConfig &config) {
     _stprintf(profileKey+4, _T("%u"), i);
     unsigned int temp = 0;
     if (Profile::Get(profileKey, temp)) {
-      config.panel[0].infoBoxID[i] = temp & 0xFF;
-      config.panel[1].infoBoxID[i] = (temp >> 8) & 0xFF;
-      config.panel[2].infoBoxID[i] = (temp >> 16) & 0xFF;
-      config.panel[3].infoBoxID[i] = (temp >> 24) & 0xFF;
+      config.panel[0].infoBoxID[i] = (t_InfoBox)( temp        & 0xFF);
+      config.panel[1].infoBoxID[i] = (t_InfoBox)((temp >>  8) & 0xFF);
+      config.panel[2].infoBoxID[i] = (t_InfoBox)((temp >> 16) & 0xFF);
+      config.panel[3].infoBoxID[i] = (t_InfoBox)((temp >> 24) & 0xFF);
     }
   }
 }
@@ -103,7 +108,9 @@ Profile::GetInfoBoxManagerConfig(InfoBoxManagerConfig &config)
     }
     for (unsigned int j = 0; j < InfoBoxPanelConfig::MAX_INFOBOXES; j++) {
       _stprintf(profileKey, _T("InfoBoxPanel%uBox%u"), i, j);
-      Get(profileKey, config.panel[i].infoBoxID[j]);
+      unsigned int id = config.panel[i].infoBoxID[j];
+      Get(profileKey, id);
+      config.panel[i].infoBoxID[j] = (t_InfoBox)id;
     }
   }
 }

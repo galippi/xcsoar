@@ -63,7 +63,7 @@ namespace InfoBoxManager
    */
   static bool first;
 
-  unsigned GetCurrentType(unsigned box);
+  InfoBoxFactory::t_InfoBox GetCurrentType(unsigned box);
   void SetCurrentType(unsigned box, char type);
 
   void DisplayInfoBox();
@@ -210,7 +210,7 @@ InfoBoxManager::GetCurrentPanelName()
   return GetPanelName(GetCurrentPanel());
 }
 
-unsigned
+InfoBoxFactory::t_InfoBox
 InfoBoxManager::GetType(unsigned box, unsigned panelIdx)
 {
   assert(box < InfoBoxPanelConfig::MAX_INFOBOXES);
@@ -219,11 +219,11 @@ InfoBoxManager::GetType(unsigned box, unsigned panelIdx)
   return infoBoxManagerConfig.panel[panelIdx].infoBoxID[box];
 }
 
-unsigned
+InfoBoxFactory::t_InfoBox
 InfoBoxManager::GetCurrentType(unsigned box)
 {
-  unsigned retval = GetType(box, GetCurrentPanel());
-  return std::min(InfoBoxFactory::NUM_TYPES - 1, retval);
+  InfoBoxFactory::t_InfoBox retval = GetType(box, GetCurrentPanel());
+  return min(InfoBoxFactory::MAX_TYPE_VAL, retval);
 }
 
 const TCHAR*
@@ -247,8 +247,8 @@ InfoBoxManager::SetType(unsigned i, unsigned type, unsigned panelIdx)
   assert(i < InfoBoxPanelConfig::MAX_INFOBOXES);
   assert(panelIdx < InfoBoxManagerConfig::MAX_INFOBOX_PANELS);
 
-  if ((unsigned int) type != infoBoxManagerConfig.panel[panelIdx].infoBoxID[i]) {
-    infoBoxManagerConfig.panel[panelIdx].infoBoxID[i] = type;
+  if ((InfoBoxFactory::t_InfoBox) type != infoBoxManagerConfig.panel[panelIdx].infoBoxID[i]) {
+    infoBoxManagerConfig.panel[panelIdx].infoBoxID[i] = (InfoBoxFactory::t_InfoBox)type;
     infoBoxManagerConfig.panel[panelIdx].modified = true;
   }
 }
@@ -297,7 +297,7 @@ InfoBoxManager::DisplayInfoBox()
     // should apply to the function DoCalculationsSlow()
     // Do not put calculations here!
 
-    int DisplayType = GetCurrentType(i);
+    InfoBoxFactory::t_InfoBox DisplayType = GetCurrentType(i);
 
     bool needupdate = ((DisplayType != DisplayTypeLast[i]) || first);
 
