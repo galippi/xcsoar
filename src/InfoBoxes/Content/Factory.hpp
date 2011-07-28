@@ -132,7 +132,7 @@ namespace InfoBoxFactory
     e_Fin_ETE_VMG,
     e_WP_ETE_VMG,
     e_Horizon,
-    e_NUM_TYPES /* Last item */
+    NUM_TYPES /* Last item */
   }t_InfoBox;
 
   struct InfoBoxMetaData {
@@ -142,9 +142,8 @@ namespace InfoBoxFactory
     t_InfoBox next, previous;
   };
 
-  static const t_InfoBox NUM_TYPES = e_NUM_TYPES;
   static const t_InfoBox MIN_TYPE_VAL = (t_InfoBox)0;
-  static const t_InfoBox MAX_TYPE_VAL = (t_InfoBox)(e_NUM_TYPES - 1);
+  static const t_InfoBox MAX_TYPE_VAL = (t_InfoBox)(NUM_TYPES - 1);
 
   extern const InfoBoxMetaData MetaData[NUM_TYPES];
 
