@@ -197,7 +197,7 @@ static void
 OnContentHelp(WindowControl *Sender)
 {
   WndProperty *wp = (WndProperty*)Sender;
-  unsigned type = wp->GetDataField()->GetAsInteger();
+  InfoBoxFactory::t_InfoBox type = (InfoBoxFactory::t_InfoBox)wp->GetDataField()->GetAsInteger();
   if (type >= InfoBoxFactory::NUM_TYPES)
     return;
 
@@ -388,7 +388,7 @@ dlgConfigInfoboxesShowModal(SingleWindow &parent,
                                  NULL);
 
   dfe = new DataFieldEnum(OnContentAccess);
-  for (unsigned i = 0; i < InfoBoxFactory::NUM_TYPES; ++i) {
+  for (InfoBoxFactory::t_InfoBox i = InfoBoxFactory::MIN_TYPE_VAL; i < InfoBoxFactory::NUM_TYPES; i = InfoBoxFactory::next(i)) {
     const TCHAR *name = InfoBoxFactory::GetName(i);
     if (name != NULL)
       dfe->addEnumText(gettext(name), i);

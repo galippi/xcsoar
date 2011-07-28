@@ -152,7 +152,7 @@ namespace InfoBoxFactory
    * Returns the human-readable name of the info box type.
    */
   static inline const TCHAR *
-  GetName(unsigned type)
+  GetName(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 
@@ -203,6 +203,12 @@ namespace InfoBoxFactory
   min(t_InfoBox val0, t_InfoBox val1)
   {
     return (val0 < val1) ? val0 : val1;
+  }
+
+  static inline t_InfoBox
+  next(t_InfoBox val)
+  {
+    return (t_InfoBox)(val + 1);
   }
 
   gcc_const
