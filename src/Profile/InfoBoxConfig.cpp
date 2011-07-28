@@ -48,7 +48,7 @@ InfoBoxManagerConfig::InfoBoxManagerConfig()
 {
   static const unsigned int DFLT_CONFIG_BOXES = 9;
   static const unsigned int DFLT_CONFIG_PANELS = 4;
-  static const InfoBoxFactory::t_InfoBox dflt_IDs[DFLT_CONFIG_PANELS][DFLT_CONFIG_BOXES] = {
+  static const t_InfoBox dflt_IDs[DFLT_CONFIG_PANELS][DFLT_CONFIG_BOXES] = {
     { e_WP_Name,       e_WP_Distance,     e_Thermal_Gain, e_HumidityRel, e_Temperature,
       e_H_Baro,        e_TL_Avg,          e_Fin_AltDiff,  e_Fin_TimeLocal },
     { e_WP_Name,       e_WP_Distance,     e_Bearing,      e_Act_Speed,   e_Temperature,

@@ -35,7 +35,7 @@ public:
   static const unsigned int MAX_INFOBOXES = 24;
   static const unsigned int MAX_PANEL_NAME_LENGTH = 32;
   TCHAR name[MAX_PANEL_NAME_LENGTH];
-  InfoBoxFactory::t_InfoBox infoBoxID[MAX_INFOBOXES];
+  t_InfoBox infoBoxID[MAX_INFOBOXES];
   bool modified;
 };
 

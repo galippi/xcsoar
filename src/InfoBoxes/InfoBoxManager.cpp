@@ -63,7 +63,7 @@ namespace InfoBoxManager
    */
   static bool first;
 
-  InfoBoxFactory::t_InfoBox GetCurrentType(unsigned box);
+  t_InfoBox GetCurrentType(unsigned box);
   void SetCurrentType(unsigned box, char type);
 
   void DisplayInfoBox();
@@ -210,7 +210,7 @@ InfoBoxManager::GetCurrentPanelName()
   return GetPanelName(GetCurrentPanel());
 }
 
-InfoBoxFactory::t_InfoBox
+t_InfoBox
 InfoBoxManager::GetType(unsigned box, unsigned panelIdx)
 {
   assert(box < InfoBoxPanelConfig::MAX_INFOBOXES);
@@ -219,10 +219,10 @@ InfoBoxManager::GetType(unsigned box, unsigned panelIdx)
   return infoBoxManagerConfig.panel[panelIdx].infoBoxID[box];
 }
 
-InfoBoxFactory::t_InfoBox
+t_InfoBox
 InfoBoxManager::GetCurrentType(unsigned box)
 {
-  InfoBoxFactory::t_InfoBox retval = GetType(box, GetCurrentPanel());
+  t_InfoBox retval = GetType(box, GetCurrentPanel());
   return min(InfoBoxFactory::MAX_TYPE_VAL, retval);
 }
 
@@ -247,8 +247,8 @@ InfoBoxManager::SetType(unsigned i, unsigned type, unsigned panelIdx)
   assert(i < InfoBoxPanelConfig::MAX_INFOBOXES);
   assert(panelIdx < InfoBoxManagerConfig::MAX_INFOBOX_PANELS);
 
-  if ((InfoBoxFactory::t_InfoBox) type != infoBoxManagerConfig.panel[panelIdx].infoBoxID[i]) {
-    infoBoxManagerConfig.panel[panelIdx].infoBoxID[i] = (InfoBoxFactory::t_InfoBox)type;
+  if ((t_InfoBox) type != infoBoxManagerConfig.panel[panelIdx].infoBoxID[i]) {
+    infoBoxManagerConfig.panel[panelIdx].infoBoxID[i] = (t_InfoBox)type;
     infoBoxManagerConfig.panel[panelIdx].modified = true;
   }
 }
@@ -262,7 +262,7 @@ InfoBoxManager::SetCurrentType(unsigned box, unsigned type)
 void
 InfoBoxManager::Event_Change(int i)
 {
-  InfoBoxFactory::t_InfoBox j = InfoBoxFactory::MIN_TYPE_VAL, k;
+  t_InfoBox j = InfoBoxFactory::MIN_TYPE_VAL, k;
 
   int InfoFocus = GetFocused();
   if (InfoFocus < 0)
@@ -297,7 +297,7 @@ InfoBoxManager::DisplayInfoBox()
     // should apply to the function DoCalculationsSlow()
     // Do not put calculations here!
 
-    InfoBoxFactory::t_InfoBox DisplayType = GetCurrentType(i);
+    t_InfoBox DisplayType = GetCurrentType(i);
 
     bool needupdate = ((DisplayType != DisplayTypeLast[i]) || first);
 
@@ -599,7 +599,7 @@ static const ComboList *info_box_combo_list;
 static void
 OnInfoBoxHelp(unsigned item)
 {
-  InfoBoxFactory::t_InfoBox type = (InfoBoxFactory::t_InfoBox)(*info_box_combo_list)[item].DataFieldIndex;
+  t_InfoBox type = (t_InfoBox)(*info_box_combo_list)[item].DataFieldIndex;
 
   TCHAR caption[100];
   _stprintf(caption, _T("%s: %s"), _("InfoBox"), gettext(InfoBoxFactory::GetName(type)));
@@ -635,7 +635,7 @@ InfoBoxManager::SetupFocused(const int id)
   int old_type = GetType(i, panel);
 
   ComboList list;
-  for (InfoBoxFactory::t_InfoBox i = InfoBoxFactory::MIN_TYPE_VAL; i < InfoBoxFactory::NUM_TYPES; i++)
+  for (t_InfoBox i = InfoBoxFactory::MIN_TYPE_VAL; i < InfoBoxFactory::NUM_TYPES; i++)
     list.Append(i, gettext(InfoBoxFactory::GetName(i)));
 
   list.Sort();
