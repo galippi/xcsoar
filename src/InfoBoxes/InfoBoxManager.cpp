@@ -632,10 +632,10 @@ InfoBoxManager::SetupFocused(const int id)
     return;
 
   const unsigned panel = GetCurrentPanel();
-  int old_type = GetType(i, panel);
+  int old_type = GetType(id, panel);
 
   ComboList list;
-  for (InfoBoxFactory::t_InfoBox i = InfoBoxFactory::MIN_TYPE_VAL; i < InfoBoxFactory::NUM_TYPES; i = InfoBoxFactory::next(i))
+  for (InfoBoxFactory::t_InfoBox i = InfoBoxFactory::MIN_TYPE_VAL; i < InfoBoxFactory::NUM_TYPES; i++)
     list.Append(i, gettext(InfoBoxFactory::GetName(i)));
 
   list.Sort();

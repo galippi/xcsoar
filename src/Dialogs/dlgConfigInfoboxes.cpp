@@ -388,7 +388,7 @@ dlgConfigInfoboxesShowModal(SingleWindow &parent,
                                  NULL);
 
   dfe = new DataFieldEnum(OnContentAccess);
-  for (InfoBoxFactory::t_InfoBox i = InfoBoxFactory::MIN_TYPE_VAL; i < InfoBoxFactory::NUM_TYPES; i = InfoBoxFactory::next(i)) {
+  for (InfoBoxFactory::t_InfoBox i = InfoBoxFactory::MIN_TYPE_VAL; i < InfoBoxFactory::NUM_TYPES; i++) {
     const TCHAR *name = InfoBoxFactory::GetName(i);
     if (name != NULL)
       dfe->addEnumText(gettext(name), i);

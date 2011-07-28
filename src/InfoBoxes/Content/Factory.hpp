@@ -204,10 +204,9 @@ namespace InfoBoxFactory
     return (val0 < val1) ? val0 : val1;
   }
 
-  static inline t_InfoBox
-  next(t_InfoBox val)
+  static inline t_InfoBox &operator++(t_InfoBox &type, int)
   {
-    return (t_InfoBox)(val + 1);
+    return type = (t_InfoBox)(type + 1);
   }
 
   gcc_const
