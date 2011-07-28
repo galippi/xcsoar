@@ -632,7 +632,7 @@ InfoBoxManager::SetupFocused(const int id)
     return;
 
   const unsigned panel = GetCurrentPanel();
-  int old_type = GetType(id, panel);
+  int old_type = GetType(i, panel);
 
   ComboList list;
   for (InfoBoxFactory::t_InfoBox i = InfoBoxFactory::MIN_TYPE_VAL; i < InfoBoxFactory::NUM_TYPES; i++)
