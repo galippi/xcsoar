@@ -879,7 +879,7 @@ const InfoBoxFactory::InfoBoxMetaData InfoBoxFactory::MetaData[NUM_TYPES] = {
 };
 
 InfoBoxContent*
-InfoBoxFactory::Create(unsigned InfoBoxType)
+InfoBoxFactory::Create(t_InfoBox InfoBoxType)
 {
   switch (InfoBoxType) {
   case e_HeightGPS:
@@ -1066,7 +1066,8 @@ InfoBoxFactory::Create(unsigned InfoBoxType)
 
   case e_NearestAirspaceVertical:
     return new InfoBoxContentNearestAirspaceVertical();
-  }
 
-  return NULL;
+  default:
+    return NULL;
+  }
 }

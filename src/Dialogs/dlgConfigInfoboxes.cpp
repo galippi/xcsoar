@@ -102,7 +102,7 @@ OnPaste(gcc_unused WndButton &button)
     return;
 
   for (unsigned item = 0; item < clipboard_size; item++) {
-    unsigned content = clipboard.contents[item];
+    InfoBoxFactory::t_InfoBox content = clipboard.contents[item];
     if (content >= InfoBoxFactory::NUM_TYPES)
       continue;
 
@@ -145,7 +145,7 @@ OnContentAccess(DataField *Sender, DataField::DataAccessKind_t Mode)
 {
   const DataFieldEnum &dfe = (const DataFieldEnum &)*Sender;
 
-  data.contents[current_preview] = dfe.GetAsInteger();
+  data.contents[current_preview] = (InfoBoxFactory::t_InfoBox)dfe.GetAsInteger();
   previews[current_preview].invalidate();
 }
 
