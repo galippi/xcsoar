@@ -63,7 +63,7 @@ namespace InfoBoxManager
    */
   static bool first;
 
-  unsigned GetCurrentType(unsigned box);
+  InfoBoxFactory::t_InfoBox GetCurrentType(unsigned box);
 
   void DisplayInfoBox();
   void InfoBoxDrawIfDirty();
@@ -210,7 +210,7 @@ InfoBoxManager::GetCurrentPanelName()
   return GetPanelName(GetCurrentPanel());
 }
 
-unsigned
+InfoBoxFactory::t_InfoBox
 InfoBoxManager::GetType(unsigned box, unsigned panelIdx)
 {
   assert(box < InfoBoxSettings::Panel::MAX_CONTENTS);
@@ -222,11 +222,11 @@ InfoBoxManager::GetType(unsigned box, unsigned panelIdx)
   return infoBoxManagerConfig.panels[panelIdx].contents[box];
 }
 
-unsigned
+InfoBoxFactory::t_InfoBox
 InfoBoxManager::GetCurrentType(unsigned box)
 {
-  unsigned retval = GetType(box, GetCurrentPanel());
-  return std::min(InfoBoxFactory::NUM_TYPES - 1, retval);
+  InfoBoxFactory::t_InfoBox retval = GetType(box, GetCurrentPanel());
+  return min(InfoBoxFactory::MAX_TYPE_VAL, retval);
 }
 
 const TCHAR*
@@ -250,7 +250,8 @@ InfoBoxManager::IsEmpty(unsigned panelIdx)
 void
 InfoBoxManager::Event_Change(int i)
 {
-  int j = 0, k;
+  InfoBoxFactory::t_InfoBox j = InfoBoxFactory::MIN_TYPE_VAL;
+  InfoBoxFactory::t_InfoBox k;
 
   int InfoFocus = GetFocused();
   if (InfoFocus < 0)
@@ -262,9 +263,9 @@ InfoBoxManager::Event_Change(int i)
 
   k = panel.contents[InfoFocus];
   if (i > 0)
-    j = InfoBoxFactory::GetNext(k);
+    j = (InfoBoxFactory::t_InfoBox)InfoBoxFactory::GetNext(k);
   else if (i < 0)
-    j = InfoBoxFactory::GetPrevious(k);
+    j = (InfoBoxFactory::t_InfoBox)InfoBoxFactory::GetPrevious(k);
 
   // TODO code: if i==0, go to default or reset
 
@@ -289,7 +290,7 @@ InfoBoxManager::DisplayInfoBox()
     // should apply to the function DoCalculationsSlow()
     // Do not put calculations here!
 
-    int DisplayType = GetCurrentType(i);
+    InfoBoxFactory::t_InfoBox DisplayType = GetCurrentType(i);
 
     bool needupdate = ((DisplayType != DisplayTypeLast[i]) || first);
 
@@ -586,7 +587,7 @@ InfoBoxManager::SetupFocused(const int id)
   const unsigned panel_index = GetCurrentPanel();
   InfoBoxSettings::Panel &panel = settings.panels[panel_index];
 
-  const int old_type = panel.contents[i];
+  const InfoBoxFactory::t_InfoBox old_type = panel.contents[i];
 
   ComboList list;
   for (unsigned i = 0; i < InfoBoxFactory::NUM_TYPES; i++)
@@ -607,7 +608,7 @@ InfoBoxManager::SetupFocused(const int id)
 
   /* was there a modification? */
 
-  int new_type = list[result].DataFieldIndex;
+  InfoBoxFactory::t_InfoBox new_type = (InfoBoxFactory::t_InfoBox)list[result].DataFieldIndex;
   if (new_type == old_type)
     return;
 
