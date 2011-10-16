@@ -203,12 +203,6 @@ namespace InfoBoxFactory
     return MetaData[type].previous;
   }
 
-  static inline t_InfoBox
-  min(t_InfoBox val0, t_InfoBox val1)
-  {
-    return (val0 < val1) ? val0 : val1;
-  }
-
   bool
   Get(const TCHAR *key, t_InfoBox &val);
 
