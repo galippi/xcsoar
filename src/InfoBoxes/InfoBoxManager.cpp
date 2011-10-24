@@ -50,6 +50,8 @@ Copyright_License {
 
 #include <algorithm>
 
+using namespace InfoBoxFactory;
+
 namespace InfoBoxManager
 {
   InfoBoxLayout::Layout layout;
@@ -551,7 +553,7 @@ static const ComboList *info_box_combo_list;
 static void
 OnInfoBoxHelp(unsigned item)
 {
-  int type = (*info_box_combo_list)[item].DataFieldIndex;
+  t_InfoBox type = (t_InfoBox)(*info_box_combo_list)[item].DataFieldIndex;
 
   TCHAR caption[100];
   _stprintf(caption, _T("%s: %s"), _("InfoBox"), gettext(InfoBoxFactory::GetName(type)));
@@ -590,7 +592,7 @@ InfoBoxManager::SetupFocused(const int id)
   const InfoBoxFactory::t_InfoBox old_type = panel.contents[i];
 
   ComboList list;
-  for (unsigned i = 0; i < InfoBoxFactory::NUM_TYPES; i++)
+  for (t_InfoBox i = InfoBoxFactory::MIN_TYPE_VAL; i < InfoBoxFactory::NUM_TYPES; i++)
     list.Append(i, gettext(InfoBoxFactory::GetName(i)));
 
   list.Sort();

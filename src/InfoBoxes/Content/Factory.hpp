@@ -156,7 +156,7 @@ namespace InfoBoxFactory
    * Returns the human-readable name of the info box type.
    */
   static inline const TCHAR *
-  GetName(unsigned type)
+  GetName(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 
@@ -169,7 +169,7 @@ namespace InfoBoxFactory
    * git in the small #InfoBoxWindow.
    */
   static inline const TCHAR *
-  GetCaption(unsigned type)
+  GetCaption(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 
@@ -180,23 +180,23 @@ namespace InfoBoxFactory
    * Returns the long description (help text) of the info box type.
    */
   static inline const TCHAR *
-  GetDescription(unsigned type)
+  GetDescription(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 
     return MetaData[type].description;
   }
 
-  static inline unsigned
-  GetNext(unsigned type)
+  static inline t_InfoBox
+  GetNext(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 
     return MetaData[type].next;
   }
 
-  static inline unsigned
-  GetPrevious(unsigned type)
+  static inline t_InfoBox
+  GetPrevious(t_InfoBox type)
   {
     assert(type < NUM_TYPES);
 
@@ -205,6 +205,12 @@ namespace InfoBoxFactory
 
   bool
   Get(const TCHAR *key, t_InfoBox &val);
+
+  static inline t_InfoBox
+  operator++(t_InfoBox &val, int)
+  {
+    return (t_InfoBox)(val + 1);
+  }
 
   gcc_const
   InfoBoxContent* Create(t_InfoBox InfoBoxType);
