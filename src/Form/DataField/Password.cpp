@@ -23,6 +23,14 @@ Copyright_License {
 
 #include "Password.hpp"
 
+#ifdef __CYGWIN__
+#ifdef	_UNICODE
+#define	_tcsclen	wcslen
+#else
+#define	_tcsclen	strlen
+#endif
+#endif
+
 const TCHAR *
 PasswordDataField::GetAsDisplayString() const
 {
